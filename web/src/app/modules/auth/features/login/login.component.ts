@@ -2,13 +2,13 @@ import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideEye, lucideEyeOff } from '@ng-icons/lucide';
+import { lucideEye, lucideEyeOff, lucideLeaf } from '@ng-icons/lucide';
 import { toast } from '@spartan-ng/brain/sonner';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
+import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmInputImports } from '@spartan-ng/helm/input';
 import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
-import { LotMapComponent } from '../../components/lot-map/lot-map.component';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -20,9 +20,9 @@ import { AuthService } from '../../services/auth.service';
     HlmFieldImports,
     HlmInputImports,
     HlmSpinnerImports,
-    LotMapComponent,
+    HlmCardImports,
   ],
-  providers: [provideIcons({ lucideEye, lucideEyeOff })],
+  providers: [provideIcons({ lucideEye, lucideEyeOff, lucideLeaf })],
   templateUrl: './login.component.html',
 })
 export class LoginComponent {

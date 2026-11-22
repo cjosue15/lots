@@ -1,14 +1,14 @@
 import { Component, computed, inject } from '@angular/core';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideLogOut } from '@ng-icons/lucide';
+import { lucideLeaf, lucideLogOut } from '@ng-icons/lucide';
 import { ROLE_LABELS } from '../modules/auth/models/me.model';
 import { AuthService } from '../modules/auth/services/auth.service';
 
 @Component({
   selector: 'app-shell',
   imports: [RouterOutlet, RouterLink, NgIcon],
-  providers: [provideIcons({ lucideLogOut })],
+  providers: [provideIcons({ lucideLeaf, lucideLogOut })],
   template: `
     <header class="bg-primary text-primary-foreground">
       <div class="mx-auto flex h-14 max-w-5xl items-center gap-3 px-4">
@@ -16,7 +16,7 @@ import { AuthService } from '../modules/auth/services/auth.service';
           routerLink="/"
           class="flex items-center gap-2 rounded-sm font-semibold focus-visible:ring-3 focus-visible:ring-white/60 focus-visible:outline-none"
         >
-          <span aria-hidden="true" class="size-2.5 rounded-full bg-(--gold)"></span>
+          <ng-icon name="lucideLeaf" size="18" aria-hidden="true" />
           Oro Verde
         </a>
 
