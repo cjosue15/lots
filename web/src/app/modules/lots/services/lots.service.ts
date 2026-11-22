@@ -31,6 +31,11 @@ export class LotsService {
     return this.http.post<LotDetail>(`${this.api}/lots/${lotId}/cycles`, { startDate });
   }
 
+  /** Called after the admin edits the template, so the form loads the new one. */
+  clearTemplate(): void {
+    this.template = null;
+  }
+
   getTemplate(): Observable<ActionTemplate> {
     if (this.template) {
       return of(this.template);

@@ -1,0 +1,120 @@
+@if (greenhouses.isLoading() && !greenhouses.hasValue()) {
+  <div class="flex flex-col gap-3" aria-busy="true" aria-label="Cargando lotes">
+    <hlm-skeleton class="h-6 w-40" />
+    <hlm-skeleton class="h-32 w-full rounded-lg" />
+  </div>
+} @else if (greenhouses.error()) {
+  <div class="rounded-lg border bg-card p-4">
+    <p class="font-medium">No se pudieron cargar los lotes.</p>
+    <p class="mt-1 text-sm text-muted-foreground">Revisa tu conexión y vuelve a intentarlo.</p>
+    <button hlmBtn variant="outline" class="mt-4" (click)="greenhouses.reload()">Reintentar</button>
+  </div>
+} @else {
+  <p class="max-w-prose text-sm text-muted-foreground">
+    Un lote desactivado no aparece en la vista general ni recibe registros, pero conserva sus
+    ciclos.
+  </p>
+
+  @for (greenhouse of greenhouses.value(); track greenhouse.id) {
+    <section class="mt-8" [attr.aria-labelledby]="'gh-' + greenhouse.id">
+      <h2 [id]="'gh-' + greenhouse.id" class="flex items-baseline justify-between px-1">
+        <span class="text-lg font-semibold">{{ greenhouse.name }}</span>
+        <span class="text-sm text-muted-foreground"
+          >{{ activeCount(greenhouse) }} lotes activos</span
+        >
+      </h2>
+
+      <ul class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+        @for (lot of greenhouse.lots; track lot.id) {
+          <li
+            class="flex items-center gap-3 rounded-lg border px-3 py-2.5"
+            [class]="lot.active ? 'bg-card' : 'border-dashed bg-transparent'"
+          >
+            <span
+              class="flex size-10 shrink-0 items-center justify-center rounded-md text-lg font-semibold tabular-nums"
+              [class]="lot.active ? 'bg-secondary' : 'text-muted-foreground'"
+              aria-hidden="true"
+            >
+              {{ lot.number }}
+            </span>
+            <span class="min-w-0 flex-1">
+              <span class="sr-only">Lote {{ lot.number }}.</span>
+              <span class="block truncate text-sm" [class.text-muted-foreground]="!lot.active">
+                @if (!lot.active) {
+                  Inactivo
+                } @else if (lot.activeCycle) {
+                  Ciclo {{ lot.activeCycle }}
+                } @else {
+                  Sin ciclo
+                }
+              </span>
+
+              @if (lot.active) {
+                <hlm-alert-dialog>
+                  <button
+                    hlmAlertDialogTrigger
+                    type="button"
+                    class="rounded-sm text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none disabled:opacity-50"
+                    [disabled]="busy() === lot.id"
+                    [attr.aria-label]="'Desactivar lote ' + lot.number"
+                  >
+                    Desactivar
+                  </button>
+                  <hlm-alert-dialog-content *hlmAlertDialogPortal="let ctx">
+                    <hlm-alert-dialog-header>
+                      <h2 hlmAlertDialogTitle>
+                        ¿Desactivar el lote {{ lot.number }} de {{ greenhouse.name }}?
+                      </h2>
+                      <p hlmAlertDialogDescription>
+                        Dejará de aparecer en la vista general y no se podrá registrar en él.
+                        @if (lot.activeCycle) {
+                          Su ciclo {{ lot.activeCycle }} queda guardado tal como está.
+                        }
+                        Puedes reactivarlo cuando quieras.
+                      </p>
+                    </hlm-alert-dialog-header>
+                    <hlm-alert-dialog-footer>
+                      <button hlmAlertDialogCancel>Cancelar</button>
+                      <button hlmAlertDialogAction (click)="ctx.close(); setActive(lot, false)">
+                        Desactivar lote
+                      </button>
+                    </hlm-alert-dialog-footer>
+                  </hlm-alert-dialog-content>
+                </hlm-alert-dialog>
+              } @else {
+                <button
+                  type="button"
+                  class="rounded-sm text-xs font-medium underline-offset-2 hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none disabled:opacity-50"
+                  [disabled]="busy() === lot.id"
+                  [attr.aria-label]="'Reactivar lote ' + lot.number"
+                  (click)="setActive(lot, true)"
+                >
+                  Reactivar
+                </button>
+              }
+            </span>
+          </li>
+        }
+      </ul>
+
+      <form class="mt-3 flex items-end gap-2 px-1" (submit)="addLot($event, greenhouse, number)">
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel [for]="'new-lot-' + greenhouse.id" class="text-sm">Nuevo lote</label>
+          <input
+            #number
+            hlmInput
+            type="number"
+            min="1"
+            inputmode="numeric"
+            class="w-24"
+            [id]="'new-lot-' + greenhouse.id"
+            [value]="nextNumber(greenhouse)"
+          />
+        </div>
+        <button hlmBtn variant="outline" type="submit" [disabled]="busy() === greenhouse.id">
+          Agregar a {{ greenhouse.name }}
+        </button>
+      </form>
+    </section>
+  }
+}

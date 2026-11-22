@@ -28,9 +28,15 @@ export class ActionLogsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(cycleId: string, body: CreateActionLog, user: AuthUser): Promise<ActionLogResponse> {
-    const cycle = await this.prisma.cycle.findUnique({ where: { id: cycleId } });
+    const cycle = await this.prisma.cycle.findUnique({
+      where: { id: cycleId },
+      include: { lot: { select: { active: true } } },
+    });
     if (!cycle) {
       throw new NotFoundException('El ciclo no existe');
+    }
+    if (!cycle.lot.active) {
+      throw new ConflictException('El lote está desactivado; pide al administrador que lo reactive');
     }
     if (cycle.status !== 'ACTIVE') {
       throw new ConflictException('El ciclo está cerrado; registra en el ciclo activo del lote');

@@ -1,0 +1,204 @@
+@if (template.isLoading() && !template.hasValue()) {
+  <div class="flex flex-col gap-3" aria-busy="true" aria-label="Cargando plantilla">
+    @for (row of [1, 2, 3]; track row) {
+      <hlm-skeleton class="h-24 w-full rounded-lg" />
+    }
+  </div>
+} @else if (template.error()) {
+  <div class="rounded-lg border bg-card p-4">
+    <p class="font-medium">No se pudo cargar la plantilla.</p>
+    <p class="mt-1 text-sm text-muted-foreground">Revisa tu conexión y vuelve a intentarlo.</p>
+    <button hlmBtn variant="outline" class="mt-4" (click)="template.reload()">Reintentar</button>
+  </div>
+} @else if (template.value(); as tpl) {
+  <p class="max-w-prose text-sm text-muted-foreground">
+    Las 8 fases son fijas: solo se les cambia el nombre. Los cambios en la plantilla no alteran los
+    registros ya hechos.
+  </p>
+
+  <!-- The phases are a real sequence: a numbered spine joins them. -->
+  <ol class="mt-6" aria-label="Fases">
+    @for (phase of tpl.phases; track phase.id; let last = $last) {
+      <li class="relative pb-8 last:pb-0">
+        @if (!last) {
+          <span
+            class="absolute top-12 bottom-1 left-[1.375rem] hidden w-px bg-border sm:block"
+            aria-hidden="true"
+          ></span>
+        }
+        <section [attr.aria-labelledby]="'phase-' + phase.id">
+          <div class="flex items-center gap-4">
+            <span
+              class="flex size-11 shrink-0 items-center justify-center rounded-md bg-primary text-lg font-semibold text-primary-foreground tabular-nums"
+              aria-hidden="true"
+            >
+              {{ phase.order }}
+            </span>
+            <div class="min-w-0 flex-1">
+              @if (isEditing('phase', phase.id)) {
+                <form
+                  class="flex flex-wrap items-center gap-2"
+                  (submit)="renamePhase($event, phase, phaseName)"
+                >
+                  <label class="sr-only" [for]="'phase-name-' + phase.id"
+                    >Nombre de la fase {{ phase.order }}</label
+                  >
+                  <input
+                    #phaseName
+                    hlmInput
+                    class="min-w-0 flex-1 bg-card"
+                    maxlength="80"
+                    [id]="'phase-name-' + phase.id"
+                    [value]="phase.name"
+                  />
+                  <button hlmBtn type="submit" size="sm" [disabled]="saving()">Guardar</button>
+                  <button
+                    hlmBtn
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    (click)="editing.set(null)"
+                  >
+                    Cancelar
+                  </button>
+                </form>
+              } @else {
+                <div class="flex min-h-11 items-center gap-2">
+                  <h2 [id]="'phase-' + phase.id" class="text-lg font-semibold">
+                    <span class="sr-only">Fase {{ phase.order }}:</span> {{ phase.name }}
+                  </h2>
+                  <button
+                    hlmBtn
+                    variant="ghost"
+                    size="icon-sm"
+                    class="text-muted-foreground"
+                    [attr.aria-label]="'Renombrar la fase ' + phase.name"
+                    (click)="editing.set({ kind: 'phase', id: phase.id })"
+                  >
+                    <ng-icon name="lucidePencil" size="15" aria-hidden="true" />
+                  </button>
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="sm:pl-15">
+            <ng-container
+              [ngTemplateOutlet]="actionList"
+              [ngTemplateOutletContext]="{ $implicit: phase.actions, phaseId: phase.id }"
+            />
+          </div>
+        </section>
+      </li>
+    }
+  </ol>
+
+  <section class="mt-12 border-t pt-8" aria-labelledby="general-title">
+    <h2 id="general-title" class="text-lg font-semibold">Acciones generales</h2>
+    <p class="text-sm text-muted-foreground">
+      Se registran el día en que se hacen y no cambian la fase del lote.
+    </p>
+    <ng-container
+      [ngTemplateOutlet]="actionList"
+      [ngTemplateOutletContext]="{ $implicit: tpl.general, phaseId: null }"
+    />
+  </section>
+
+  <ng-template #actionList let-actions let-phaseId="phaseId">
+    @if (actions.length) {
+      <ul class="mt-2 divide-y overflow-hidden rounded-lg border bg-card">
+        @for (
+          action of asActions(actions);
+          track action.id;
+          let first = $first;
+          let lastAction = $last
+        ) {
+          <li>
+            @if (isEditing('action', action.id)) {
+              <div class="bg-muted/60 p-4">
+                <app-action-editor
+                  [action]="action"
+                  [phases]="tpl.phases"
+                  [saving]="saving()"
+                  (saved)="updateAction(action, $event)"
+                  (activeToggled)="setActive(action, $event)"
+                  (cancelled)="editing.set(null)"
+                />
+              </div>
+            } @else {
+              <div class="flex items-center gap-2 py-2 pr-2 pl-4">
+                <div class="min-w-0 flex-1 py-1">
+                  <p
+                    class="flex flex-wrap items-center gap-x-2"
+                    [class.text-muted-foreground]="!action.active"
+                  >
+                    <span class="font-medium">{{ action.name }}</span>
+                    @if (!action.active) {
+                      <span class="rounded-full border px-2 text-xs">Inactiva</span>
+                    }
+                  </p>
+                  <p class="text-xs text-muted-foreground">{{ summary(action) }}</p>
+                </div>
+                <button
+                  hlmBtn
+                  variant="ghost"
+                  size="icon-sm"
+                  class="text-muted-foreground"
+                  [disabled]="first"
+                  [attr.aria-label]="'Subir ' + action.name"
+                  (click)="move(action, 'up')"
+                >
+                  <ng-icon name="lucideArrowUp" size="15" aria-hidden="true" />
+                </button>
+                <button
+                  hlmBtn
+                  variant="ghost"
+                  size="icon-sm"
+                  class="text-muted-foreground"
+                  [disabled]="lastAction"
+                  [attr.aria-label]="'Bajar ' + action.name"
+                  (click)="move(action, 'down')"
+                >
+                  <ng-icon name="lucideArrowDown" size="15" aria-hidden="true" />
+                </button>
+                <button
+                  hlmBtn
+                  variant="ghost"
+                  size="icon-sm"
+                  class="text-muted-foreground"
+                  [attr.aria-label]="'Editar ' + action.name"
+                  (click)="editing.set({ kind: 'action', id: action.id })"
+                >
+                  <ng-icon name="lucidePencil" size="15" aria-hidden="true" />
+                </button>
+              </div>
+            }
+          </li>
+        }
+      </ul>
+    }
+
+    @if (isEditing('new', phaseId)) {
+      <div class="mt-2 rounded-lg bg-muted/60 p-4">
+        <app-action-editor
+          [phaseId]="phaseId"
+          [phases]="tpl.phases"
+          [saving]="saving()"
+          (saved)="createAction($event)"
+          (cancelled)="editing.set(null)"
+        />
+      </div>
+    } @else {
+      <button
+        hlmBtn
+        variant="ghost"
+        size="sm"
+        class="mt-1 -ml-2 text-muted-foreground"
+        (click)="editing.set({ kind: 'new', phaseId })"
+      >
+        <ng-icon name="lucidePlus" size="15" aria-hidden="true" />
+        Agregar acción
+      </button>
+    }
+  </ng-template>
+}

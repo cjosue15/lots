@@ -1,24 +1,37 @@
 import { Component, computed, inject } from '@angular/core';
-import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideLeaf, lucideLogOut } from '@ng-icons/lucide';
+import { lucideLeaf, lucideLogOut, lucideSettings } from '@ng-icons/lucide';
 import { ROLE_LABELS } from '../modules/auth/models/me.model';
 import { AuthService } from '../modules/auth/services/auth.service';
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, NgIcon],
-  providers: [provideIcons({ lucideLeaf, lucideLogOut })],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, NgIcon],
+  providers: [provideIcons({ lucideLeaf, lucideLogOut, lucideSettings })],
   template: `
     <header class="bg-primary text-primary-foreground">
       <div class="mx-auto flex h-14 max-w-5xl items-center gap-3 px-4">
         <a
           routerLink="/"
-          class="flex items-center gap-2 rounded-sm font-semibold focus-visible:ring-3 focus-visible:ring-white/60 focus-visible:outline-none"
+          class="flex shrink-0 items-center gap-2 rounded-sm font-semibold whitespace-nowrap focus-visible:ring-3 focus-visible:ring-white/60 focus-visible:outline-none"
         >
           <ng-icon name="lucideLeaf" size="18" aria-hidden="true" />
           Oro Verde
         </a>
+
+        @if (auth.isAdmin()) {
+          <a
+            routerLink="/admin"
+            routerLinkActive="bg-white/15"
+            ariaCurrentWhenActive="page"
+            class="flex h-10 items-center gap-1.5 rounded-md px-3 text-sm hover:bg-white/10 focus-visible:ring-3 focus-visible:ring-white/60 focus-visible:outline-none"
+            aria-label="Administración"
+          >
+            <ng-icon name="lucideSettings" size="16" aria-hidden="true" />
+            <span class="hidden sm:inline">Administración</span>
+          </a>
+        }
 
         @if (auth.me(); as me) {
           <p class="ml-auto min-w-0 text-right text-sm leading-tight">

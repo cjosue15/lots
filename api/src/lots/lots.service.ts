@@ -152,8 +152,11 @@ export class LotsService {
     try {
       await this.prisma.$transaction(async (tx) => {
         const lot = await tx.lot.findUnique({ where: { id: lotId } });
-        if (!lot?.active) {
+        if (!lot) {
           throw new NotFoundException('El lote no existe');
+        }
+        if (!lot.active) {
+          throw new ConflictException('El lote está desactivado; pide al administrador que lo reactive');
         }
 
         const last = await tx.cycle.findFirst({

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ActionLogsModule } from './action-logs/action-logs.module.js';
+import { AdminModule } from './admin/admin.module.js';
 import { ActionsModule } from './actions/actions.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
@@ -16,6 +17,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
     ActionsModule,
     LotsModule,
     ActionLogsModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

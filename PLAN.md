@@ -161,6 +161,12 @@ Greenhouse ──< Lot ──< Cycle ──< ActionLog ──< ActionLogChange
 | Detalle del registro | Celular y web | Datos e historial de cambios |
 | Administración | Web (solo admin) | Fases y acciones de la plantilla, lotes |
 
+### Administración (etapa 1)
+
+- **Fases:** solo se renombran. Siguen siendo 8, con orden fijo; no se agregan, quitan ni reordenan. Más adelante se podría permitir, pero la barra de fases (8 segmentos) y la regla de §7 tendrían que adaptarse a un número variable.
+- **Acciones:** se crean, se renombran, se cambian de fase o de tipo de detalle, se ordenan dentro de su grupo y se desactivan o reactivan. Los registros ya hechos no cambian (§9: el nombre y la fase se copian).
+- **Lotes:** se agregan a un invernadero y se desactivan o reactivan. Un lote desactivado no aparece en la vista general, pero conserva sus ciclos.
+
 ## 11. Tecnología e infraestructura
 
 Se replica el stack y las convenciones del proyecto `distribution` (`~/dev/distribution/stack-context.md`).
