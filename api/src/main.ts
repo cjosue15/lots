@@ -6,6 +6,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
 
+  app.setGlobalPrefix('api');
+
   // Required on purpose: without CORS declared the app does not start,
   // instead of silently allowing `*`. Comma-separated list of origins.
   const origin = config
