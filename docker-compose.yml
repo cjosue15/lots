@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lots-db
+
+    environment:
+      POSTGRES_USER: lots-user
+      POSTGRES_PASSWORD: lots-password
+      POSTGRES_DB: lots-db
+
+    ports:
+      - '5434:5432'
+
+    volumes:
+      - lots_data:/var/lib/postgresql/data
+
+volumes:
+  lots_data:

@@ -1,0 +1,138 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum CycleStatus {
+  ACTIVE
+  CLOSED
+}
+
+/// Which optional extra fields the form shows for an action (all optional).
+enum DetailType {
+  NONE
+  APPLICATION // product, dose
+  IRRIGATION // humidity
+  PEST_CHECK // result, chemicalApplied
+  FERTILIZER_EVAL // result: WORKED | CHANGE
+}
+
+model Greenhouse {
+  id   String @id @default(uuid())
+  name String @unique
+
+  lots Lot[]
+}
+
+model Lot {
+  id           String  @id @default(uuid())
+  greenhouseId String
+  number       Int
+  active       Boolean @default(true)
+
+  greenhouse Greenhouse @relation(fields: [greenhouseId], references: [id])
+  cycles     Cycle[]
+
+  @@unique([greenhouseId, number])
+}
+
+model Phase {
+  id    String @id @default(uuid())
+  order Int    @unique
+  name  String
+
+  actions    Action[]
+  actionLogs ActionLog[]
+}
+
+/// Template action. phaseId null = general action (does not move the phase).
+model Action {
+  id         String     @id @default(uuid())
+  phaseId    String?
+  name       String
+  order      Int
+  detailType DetailType @default(NONE)
+  active     Boolean    @default(true)
+
+  phase      Phase?      @relation(fields: [phaseId], references: [id])
+  actionLogs ActionLog[]
+
+  @@index([phaseId])
+}
+
+/// Only one ACTIVE cycle per lot: partial unique index added by hand in the init migration.
+model Cycle {
+  id          String      @id @default(uuid())
+  lotId       String
+  number      Int
+  startDate   DateTime    @db.Date
+  endDate     DateTime?   @db.Date
+  status      CycleStatus @default(ACTIVE)
+  createdById String
+  createdAt   DateTime    @default(now())
+
+  lot        Lot         @relation(fields: [lotId], references: [id])
+  createdBy  User        @relation(fields: [createdById], references: [id])
+  actionLogs ActionLog[]
+
+  @@unique([lotId, number])
+}
+
+/// What was done on a given day. name and phaseId are copied from the action
+/// so editing the template never alters history. actionId null = "Otra acción".
+model ActionLog {
+  id        String   @id @default(uuid())
+  cycleId   String
+  actionId  String?
+  name      String
+  phaseId   String?
+  date      DateTime @db.Date
+  details   Json?
+  notes     String?
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cycle   Cycle             @relation(fields: [cycleId], references: [id])
+  action  Action?           @relation(fields: [actionId], references: [id])
+  phase   Phase?            @relation(fields: [phaseId], references: [id])
+  user    User              @relation(fields: [userId], references: [id])
+  changes ActionLogChange[]
+
+  @@index([cycleId, date])
+}
+
+/// Audit trail: one row per edit, written in the same transaction.
+model ActionLogChange {
+  id          String   @id @default(uuid())
+  actionLogId String
+  userId      String
+  changedAt   DateTime @default(now())
+  before      Json
+  after       Json
+
+  actionLog ActionLog @relation(fields: [actionLogId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([actionLogId])
+}
+
+/// Local copy of the Supabase user, created on first login. The role is NOT
+/// stored here: it always comes from application_memberships.
+model User {
+  id          String   @id @default(uuid())
+  authId      String   @unique
+  displayName String
+  email       String
+  createdAt   DateTime @default(now())
+
+  cycles     Cycle[]
+  actionLogs ActionLog[]
+  changes    ActionLogChange[]
+}
