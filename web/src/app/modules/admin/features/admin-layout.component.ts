@@ -6,7 +6,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
   selector: 'app-admin-layout',
   imports: [RouterLink, RouterLinkActive, RouterOutlet],
   template: `
-    <div class="mx-auto w-full max-w-3xl">
+    <div class="w-full">
       <h1 class="text-2xl font-semibold">Administración</h1>
 
       <nav
@@ -35,5 +35,6 @@ export class AdminLayoutComponent {
   protected readonly tabs = [
     { path: 'template', label: 'Plantilla' },
     { path: 'lots', label: 'Lotes' },
+    { path: 'map', label: 'Vista 3D' },
   ];
 }

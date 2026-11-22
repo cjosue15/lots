@@ -13,6 +13,7 @@ import { AdminService } from '../../services/admin.service';
 
 @Component({
   selector: 'app-lots-admin',
+  host: { class: 'block max-w-3xl' },
   imports: [
     HlmAlertDialogImports,
     HlmButtonImports,

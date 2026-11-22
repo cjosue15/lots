@@ -1,0 +1,112 @@
+/* Unencapsulated (labels come from three.js): everything is scoped to .farm-map. */
+
+.farm-map .farm-canvas {
+  background: linear-gradient(to bottom, oklch(0.95 0.015 230), oklch(0.97 0.01 90) 60%);
+}
+
+.farm-map .farm-label {
+  font: 600 12px/1 var(--font-sans, sans-serif);
+  color: var(--foreground);
+  background: color-mix(in oklch, var(--card) 88%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 7px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.farm-map .farm-label-greenhouse {
+  font-size: 13px;
+  padding: 4px 10px;
+}
+
+.farm-map .farm-label-today {
+  background: #e0a526;
+  border-color: #b9841a;
+  color: #2a1d05;
+}
+
+.farm-map .farm-label-stale {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #5c564b;
+  background: color-mix(in oklch, #e6e1d6 92%, transparent);
+  border: 1px dashed #8a8273;
+}
+
+.farm-map .farm-label-stale > span {
+  font-weight: 500;
+  font-size: 11px;
+}
+
+.farm-map .farm-label-clock {
+  width: 11px;
+  height: 11px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Hover card follows the pointer; offset so it does not sit under it. */
+.farm-map .farm-card {
+  transform: translate(14px, 14px);
+  pointer-events: none;
+}
+
+.farm-map .farm-card-flip-x {
+  transform: translate(calc(-100% - 14px), 14px);
+}
+
+.farm-map .farm-card-flip-y {
+  transform: translate(14px, calc(-100% - 14px));
+}
+
+.farm-map .farm-card-flip-x.farm-card-flip-y {
+  transform: translate(calc(-100% - 14px), calc(-100% - 14px));
+}
+
+.farm-map .farm-card-pinned {
+  pointer-events: auto;
+}
+
+/* On narrow screens the pinned card docks at the bottom of the canvas. */
+@media (max-width: 639px) {
+  .farm-map .farm-card-pinned {
+    left: 0.75rem !important;
+    right: 0.75rem;
+    top: auto !important;
+    bottom: 0.75rem;
+    width: auto;
+    transform: none !important;
+  }
+}
+
+.farm-map .farm-dot {
+  display: inline-block;
+  width: 0.625rem;
+  height: 0.625rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+
+.farm-map .farm-dot[data-activity='today'] {
+  background: #e0a526;
+  border-color: #b9841a;
+}
+
+.farm-map .farm-dot[data-activity='recent'] {
+  background: #5f9a42;
+  border-color: #4d7a35;
+}
+
+.farm-map .farm-dot[data-activity='stale'],
+.farm-map .farm-dot[data-activity='idle'] {
+  background: #e6e1d6;
+  border-style: dashed;
+  border-color: #a59d8e;
+}

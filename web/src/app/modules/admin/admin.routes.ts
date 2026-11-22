@@ -16,6 +16,12 @@ export const adminRoutes: Routes = [
           ),
       },
       {
+        path: 'map',
+        title: 'Vista 3D | Oro Verde',
+        loadComponent: () =>
+          import('./features/farm-map/farm-map.component').then((m) => m.FarmMapComponent),
+      },
+      {
         path: 'lots',
         title: 'Lotes | Administración | Oro Verde',
         loadComponent: () =>

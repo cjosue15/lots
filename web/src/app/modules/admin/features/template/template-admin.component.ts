@@ -28,6 +28,7 @@ type Editing =
 
 @Component({
   selector: 'app-template-admin',
+  host: { class: 'block max-w-3xl' },
   imports: [
     NgTemplateOutlet,
     NgIcon,

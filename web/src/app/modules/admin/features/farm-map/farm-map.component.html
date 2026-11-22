@@ -1,0 +1,249 @@
+<div class="farm-map">
+  <div class="flex flex-wrap items-center gap-2">
+    @if (view() === '3d' && selected() !== null) {
+      <div role="group" aria-label="Invernadero" class="flex flex-wrap gap-1">
+        @for (gh of layout().greenhouses; track gh.id) {
+          <button
+            hlmBtn
+            size="sm"
+            [variant]="selected() === gh.id ? 'secondary' : 'ghost'"
+            [attr.aria-pressed]="selected() === gh.id"
+            (click)="select(gh.id)"
+          >
+            {{ gh.name }}
+          </button>
+        }
+        <button
+          hlmBtn
+          size="sm"
+          [variant]="selected() === all ? 'secondary' : 'ghost'"
+          [attr.aria-pressed]="selected() === all"
+          (click)="select(all)"
+        >
+          Todos
+        </button>
+      </div>
+    }
+
+    @if (supportsWebgl) {
+      <button
+        hlmBtn
+        variant="outline"
+        size="sm"
+        class="ml-auto"
+        (click)="view.set(view() === '3d' ? 'list' : '3d')"
+      >
+        <ng-icon
+          [name]="view() === '3d' ? 'lucideList' : 'lucideBox'"
+          size="15"
+          aria-hidden="true"
+        />
+        {{ view() === '3d' ? 'Ver como lista' : 'Ver en 3D' }}
+      </button>
+    }
+  </div>
+
+  @if (view() === '3d' && selected() === null) {
+    <section class="mt-3 rounded-xl border bg-card p-4 sm:p-6" aria-labelledby="map-pick">
+      <h2 id="map-pick" class="font-semibold">Elige qué invernadero ver en 3D</h2>
+      <p class="mt-1 text-sm text-muted-foreground">La vista 3D se carga recién al elegir uno.</p>
+      @if (lots.isLoading() && !lots.hasValue()) {
+        <div class="mt-4 grid gap-2 sm:grid-cols-3" aria-busy="true" aria-label="Cargando lotes">
+          @for (i of [1, 2, 3]; track i) {
+            <hlm-skeleton class="h-20 rounded-lg" />
+          }
+        </div>
+      } @else if (lots.error()) {
+        <div class="mt-4 flex flex-col items-start gap-3">
+          <p class="font-medium">No se pudieron cargar los lotes.</p>
+          <button hlmBtn variant="outline" (click)="lots.reload()">Reintentar</button>
+        </div>
+      } @else {
+        <ul class="mt-4 grid gap-2 sm:grid-cols-3">
+          @for (gh of layout().greenhouses; track gh.id) {
+            <li>
+              <button
+                type="button"
+                class="flex w-full flex-col items-start gap-1 rounded-lg border bg-background p-3 text-left hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                (click)="select(gh.id)"
+              >
+                <span class="font-medium">{{ gh.name }}</span>
+                <span class="text-sm text-muted-foreground tabular-nums">
+                  {{ gh.beds.length }} {{ gh.beds.length === 1 ? 'lote' : 'lotes' }}
+                </span>
+                @if (counts().get(gh.id); as count) {
+                  @if (count.today || count.stale) {
+                    <span class="flex flex-wrap gap-x-3 gap-y-1 text-xs tabular-nums">
+                      @if (count.today) {
+                        <span class="flex items-center gap-1.5">
+                          <span class="farm-dot" data-activity="today" aria-hidden="true"></span>
+                          {{ count.today }} con registros hoy
+                        </span>
+                      }
+                      @if (count.stale) {
+                        <span class="flex items-center gap-1.5">
+                          <span class="farm-dot" data-activity="stale" aria-hidden="true"></span>
+                          {{ count.stale }} sin registros hace {{ staleDays }}+ días
+                        </span>
+                      }
+                    </span>
+                  }
+                }
+              </button>
+            </li>
+          }
+        </ul>
+        <button hlmBtn variant="link" size="sm" class="mt-2 px-0" (click)="select(all)">
+          Ver todos juntos
+        </button>
+      }
+    </section>
+  } @else if (view() === '3d') {
+    <div
+      #canvasHost
+      class="farm-canvas relative mt-3 h-[min(72vh,720px)] min-h-[420px] overflow-hidden rounded-xl border"
+    >
+      @if (lots.isLoading() && !lots.hasValue()) {
+        <hlm-skeleton
+          class="absolute inset-0 z-10 rounded-none"
+          aria-busy="true"
+          aria-label="Cargando lotes"
+        />
+      } @else if (lots.error()) {
+        <div
+          class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-card p-6 text-center"
+        >
+          <p class="font-medium">No se pudieron cargar los lotes.</p>
+          <button hlmBtn variant="outline" (click)="lots.reload()">Reintentar</button>
+        </div>
+      }
+
+      @if (card(); as card) {
+        <div
+          class="farm-card absolute z-20 w-64 rounded-lg border bg-card p-3 text-sm shadow-lg"
+          [class.farm-card-pinned]="card.pinned"
+          [class.farm-card-flip-x]="card.flipX"
+          [class.farm-card-flip-y]="card.flipY"
+          [style.left.px]="card.x"
+          [style.top.px]="card.y"
+          [attr.role]="card.pinned ? 'dialog' : null"
+          [attr.aria-label]="
+            card.pinned ? 'Lote ' + card.lot.number + ' de ' + card.lot.greenhouse.name : null
+          "
+        >
+          <div class="flex items-start justify-between gap-2">
+            <p>
+              <span class="block text-xs text-muted-foreground">{{
+                card.lot.greenhouse.name
+              }}</span>
+              <span class="font-semibold">Lote {{ card.lot.number }}</span>
+            </p>
+            @if (card.pinned) {
+              <button
+                hlmBtn
+                variant="ghost"
+                size="icon-sm"
+                class="-mt-1 -mr-1"
+                aria-label="Cerrar"
+                (click)="closeCard()"
+              >
+                <ng-icon name="lucideX" size="15" aria-hidden="true" />
+              </button>
+            }
+          </div>
+
+          @if (card.lot.cycle; as cycle) {
+            <p class="mt-2 font-medium">
+              {{
+                cycle.phase ? cycle.phase.order + '. ' + cycle.phase.name : 'Sin registros de fase'
+              }}
+            </p>
+            <p class="text-muted-foreground tabular-nums">
+              Ciclo {{ cycle.number }}, día {{ cycle.days }}
+            </p>
+            @if (cycle.lastLog; as last) {
+              <p class="mt-1 text-muted-foreground">
+                Último: {{ last.name }}, {{ relativeDay(last.date).toLowerCase() }}
+              </p>
+            }
+          } @else {
+            <p class="mt-2 text-muted-foreground">Sin ciclo activo</p>
+          }
+          <p class="mt-2 flex items-center gap-1.5 text-xs">
+            <span
+              class="farm-dot"
+              [attr.data-activity]="activityOf(card.lot.id)"
+              aria-hidden="true"
+            ></span>
+            {{ activityText(card.lot) }}
+          </p>
+
+          @if (card.pinned) {
+            <a hlmBtn size="sm" class="mt-3 w-full" [routerLink]="['/lots', card.lot.id]"
+              >Abrir lote</a
+            >
+          }
+        </div>
+      }
+
+      <ul
+        class="farm-legend pointer-events-none absolute bottom-3 left-3 z-10 flex flex-col gap-1 rounded-md bg-card/85 px-2.5 py-2 text-xs backdrop-blur-sm"
+        aria-hidden="true"
+      >
+        <li class="flex items-center gap-1.5">
+          <span class="farm-dot" data-activity="today"></span>{{ activityLabels.today }}
+        </li>
+        <li class="flex items-center gap-1.5">
+          <span class="farm-dot" data-activity="stale"></span>{{ activityLabels.stale }}
+        </li>
+      </ul>
+    </div>
+    <p class="mt-2 text-xs text-muted-foreground">
+      Arrastra para girar, usa la rueda o pellizca para acercar. Toca un lote para ver su detalle.
+    </p>
+  } @else {
+    @if (!supportsWebgl) {
+      <p class="mt-3 text-sm text-muted-foreground">
+        Este navegador no puede mostrar la vista 3D; aquí tienes la misma información como lista.
+      </p>
+    }
+    @for (gh of layout().greenhouses; track gh.id) {
+      <section class="mt-6" [attr.aria-labelledby]="'map-gh-' + gh.id">
+        <h2 [id]="'map-gh-' + gh.id" class="px-1 text-lg font-semibold">{{ gh.name }}</h2>
+        <ul class="mt-2 divide-y overflow-hidden rounded-lg border bg-card">
+          @for (bed of gh.beds; track bed.lot.id) {
+            <li>
+              <a
+                [routerLink]="['/lots', bed.lot.id]"
+                class="flex items-center gap-3 px-4 py-2.5 hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+              >
+                <span class="w-16 shrink-0 font-medium whitespace-nowrap tabular-nums"
+                  >Lote {{ bed.lot.number }}</span
+                >
+                <span class="min-w-0 flex-1 text-sm">
+                  {{
+                    bed.lot.cycle?.phase
+                      ? bed.lot.cycle!.phase!.order + '. ' + bed.lot.cycle!.phase!.name
+                      : bed.lot.cycle
+                        ? 'Sin registros de fase'
+                        : 'Sin ciclo activo'
+                  }}
+                </span>
+                @if (bed.lot.cycle) {
+                  <span class="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
+                    <span
+                      class="farm-dot"
+                      [attr.data-activity]="activityOf(bed.lot.id)"
+                      aria-hidden="true"
+                    ></span>
+                    {{ activityText(bed.lot) }}
+                  </span>
+                }
+              </a>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  }
+</div>
