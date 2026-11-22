@@ -167,6 +167,32 @@ Greenhouse ──< Lot ──< Cycle ──< ActionLog ──< ActionLogChange
 - **Acciones:** se crean, se renombran, se cambian de fase o de tipo de detalle, se ordenan dentro de su grupo y se desactivan o reactivan. Los registros ya hechos no cambian (§9: el nombre y la fase se copian).
 - **Lotes:** se agregan a un invernadero y se desactivan o reactivan. Un lote desactivado no aparece en la vista general, pero conserva sus ciclos.
 
+### Vista 3D de los lotes (administración)
+
+Página `/admin/map` (pestaña "Vista 3D"), solo para el admin, hecha con three.js.
+
+- **Distribución esquemática (v1):** los 3 invernaderos como naves con techo en arco de plástico translúcido, una al lado de otra. Dentro, los lotes son camas del mismo tamaño ordenadas por número, en 1 o 2 filas. **Más adelante** se reemplaza por la distribución real (posición, tamaño y orientación de cada nave y lote): la escena lee las posiciones de una sola función (`layout.ts`), así que solo cambia de dónde salen.
+- **Cada cama muestra su fase**, con geometría simple generada por código (sin modelos externos):
+
+  | Fase | Cómo se ve |
+  |---|---|
+  | Sin ciclo o sin registros de fase | Tierra lisa |
+  | 1. Limpieza del campo | Tierra con restos de plástico y cintas |
+  | 2. Preparación del suelo | Camellones con montículos de guano |
+  | 3. Instalación | Camellones cubiertos con mulch y cinta de riego |
+  | 4. Descomposición | Mulch con tierra húmeda y oscura alrededor |
+  | 5. Plantines | Plantas pequeñas en línea |
+  | 6. Crecimiento | Plantas altas con hilos de tutorado |
+  | 7. Producción | Plantas altas con pepinos |
+  | 8. Cierre del ciclo | Plantas secas y caídas |
+
+- **Actividad reciente:** un lote con registros hoy se resalta; uno que lleva 3 días o más sin registros se ve atenuado.
+- **Interacción:** girar, acercar y desplazar la cámara; botones para enfocar cada invernadero; al pasar o tocar un lote, una tarjeta con lote, fase, día del ciclo y último registro; al hacer clic, abre la vista del lote.
+- **Datos:** `GET /lots` (fase, días y último registro), sin endpoints nuevos.
+- **Rendimiento:** three.js se carga solo en esta ruta; se dibuja solo cuando algo cambia (no en bucle continuo); se liberan los recursos al salir de la página.
+- **Accesibilidad:** la misma información como lista ("Ver como lista"), también cuando el navegador no soporta WebGL; se respeta "reducir movimiento".
+- **Después (v2):** línea de tiempo para reproducir el avance día a día (necesita un endpoint con la fase por día) y la distribución real.
+
 ## 11. Tecnología e infraestructura
 
 Se replica el stack y las convenciones del proyecto `distribution` (`~/dev/distribution/stack-context.md`).
