@@ -1,0 +1,194 @@
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma } from '../generated/prisma/client.js';
+import {
+  actionLogSelect,
+  type ActionLogResponse,
+  toActionLogResponse,
+} from '../action-logs/action-log.response.js';
+import type { AuthUser } from '../auth/auth-user.js';
+import { daysBetween, fromDbDate, todayInPeru, toDbDate } from '../common/peru-date.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { currentPhase, type PhaseRef } from './current-phase.js';
+
+export interface CycleSummary {
+  id: string;
+  number: number;
+  startDate: string;
+  /** Days since the cycle started (today − startDate). */
+  days: number;
+  /** `null` = "Sin registros" (no log with a phase yet). */
+  phase: PhaseRef | null;
+  lastLog: { name: string; date: string } | null;
+}
+
+export interface LotSummary {
+  id: string;
+  number: number;
+  greenhouse: { id: string; name: string };
+  /** `null` = the lot has no active cycle yet. */
+  cycle: CycleSummary | null;
+}
+
+export interface CycleHistoryItem {
+  id: string;
+  number: number;
+  startDate: string;
+  endDate: string | null;
+  status: 'ACTIVE' | 'CLOSED';
+  /** Days between start and end (or today while active). */
+  days: number;
+}
+
+export interface LotDetail extends LotSummary {
+  logs: ActionLogResponse[];
+  cycles: CycleHistoryItem[];
+}
+
+const activeCycleInclude = {
+  where: { status: 'ACTIVE' },
+  take: 1,
+  include: {
+    actionLogs: {
+      orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+      select: { name: true, date: true, phase: { select: { order: true, name: true } } },
+    },
+  },
+} satisfies Prisma.Lot$cyclesArgs;
+
+type LotWithActiveCycle = Prisma.LotGetPayload<{
+  include: { greenhouse: true; cycles: typeof activeCycleInclude };
+}>;
+
+@Injectable()
+export class LotsService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  /** Overview: every active lot with its current phase, computed on read. */
+  async findAll(): Promise<LotSummary[]> {
+    const lots = await this.prisma.lot.findMany({
+      where: { active: true },
+      orderBy: [{ greenhouse: { name: 'asc' } }, { number: 'asc' }],
+      include: { greenhouse: true, cycles: activeCycleInclude },
+    });
+    const today = todayInPeru();
+    return lots.map((lot) => this.toSummary(lot, today));
+  }
+
+  async findOne(id: string, viewer: AuthUser): Promise<LotDetail> {
+    const lot = await this.prisma.lot.findUnique({
+      where: { id },
+      include: { greenhouse: true, cycles: activeCycleInclude },
+    });
+    if (!lot) {
+      throw new NotFoundException('El lote no existe');
+    }
+
+    const today = todayInPeru();
+    const summary = this.toSummary(lot, today);
+    const [logs, cycles] = await Promise.all([
+      summary.cycle
+        ? this.prisma.actionLog.findMany({
+            where: { cycleId: summary.cycle.id },
+            orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+            select: actionLogSelect,
+          })
+        : [],
+      this.prisma.cycle.findMany({ where: { lotId: id }, orderBy: { number: 'desc' } }),
+    ]);
+
+    return {
+      ...summary,
+      logs: logs.map((row) => toActionLogResponse(row, viewer)),
+      cycles: cycles.map((cycle) => {
+        const start = fromDbDate(cycle.startDate);
+        const end = cycle.endDate ? fromDbDate(cycle.endDate) : null;
+        return {
+          id: cycle.id,
+          number: cycle.number,
+          startDate: start,
+          endDate: end,
+          status: cycle.status,
+          days: daysBetween(start, end ?? today),
+        };
+      }),
+    };
+  }
+
+  /**
+   * "Nuevo ciclo": closes the active cycle (endDate = new start date) and opens
+   * the next number, in one transaction. The partial unique index guarantees a
+   * single active cycle even if two people press the button at once.
+   */
+  async startCycle(lotId: string, startDate: string | undefined, user: AuthUser) {
+    const start = startDate ?? todayInPeru();
+    if (start > todayInPeru()) {
+      throw new BadRequestException('La fecha de inicio no puede ser posterior a hoy');
+    }
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const lot = await tx.lot.findUnique({ where: { id: lotId } });
+        if (!lot?.active) {
+          throw new NotFoundException('El lote no existe');
+        }
+
+        const last = await tx.cycle.findFirst({
+          where: { lotId },
+          orderBy: { number: 'desc' },
+        });
+        if (last?.status === 'ACTIVE') {
+          if (start < fromDbDate(last.startDate)) {
+            throw new BadRequestException(
+              'La fecha de inicio es anterior al inicio del ciclo actual',
+            );
+          }
+          await tx.cycle.update({
+            where: { id: last.id },
+            data: { status: 'CLOSED', endDate: toDbDate(start) },
+          });
+        }
+
+        await tx.cycle.create({
+          data: {
+            lotId,
+            number: (last?.number ?? 0) + 1,
+            startDate: toDbDate(start),
+            createdById: user.id,
+          },
+        });
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Otra persona acaba de iniciar un ciclo en este lote');
+      }
+      throw error;
+    }
+
+    return this.findOne(lotId, user);
+  }
+
+  private toSummary(lot: LotWithActiveCycle, today: string): LotSummary {
+    const cycle = lot.cycles[0];
+    const last = cycle?.actionLogs[0];
+    return {
+      id: lot.id,
+      number: lot.number,
+      greenhouse: { id: lot.greenhouse.id, name: lot.greenhouse.name },
+      cycle: cycle
+        ? {
+            id: cycle.id,
+            number: cycle.number,
+            startDate: fromDbDate(cycle.startDate),
+            days: daysBetween(fromDbDate(cycle.startDate), today),
+            phase: currentPhase(cycle.actionLogs),
+            lastLog: last ? { name: last.name, date: fromDbDate(last.date) } : null,
+          }
+        : null,
+    };
+  }
+}
