@@ -18,3 +18,17 @@ export function relativeDay(day: string, today = todayInPeru()): string {
   if (diff === 1) return 'Ayer';
   return formatDay(day);
 }
+
+const DATE_TIME = new Intl.DateTimeFormat('es-PE', {
+  timeZone: 'America/Lima',
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+});
+
+/** ISO timestamp → `22 nov 2026, 10:32 a. m.` in Lima time. */
+export function formatDateTime(iso: string): string {
+  return DATE_TIME.format(new Date(iso));
+}

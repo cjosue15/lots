@@ -1,10 +1,10 @@
 <div class="mx-auto w-full max-w-lg">
   <a
-    [routerLink]="['/lots', id()]"
+    [routerLink]="backLink()"
     class="-ml-1 inline-flex items-center gap-1 rounded-md px-1 py-1 text-sm text-muted-foreground hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
   >
     <ng-icon name="lucideChevronLeft" size="16" aria-hidden="true" />
-    Volver al lote
+    {{ isEdit() ? 'Volver al registro' : 'Volver al lote' }}
   </a>
 
   @if (data.isLoading() && !data.hasValue()) {
@@ -23,12 +23,12 @@
     <section hlmCard class="mt-3 shadow-sm">
       <div hlmCardHeader>
         <p hlmCardDescription>
-          {{ data.lot.greenhouse.name }}, lote {{ data.lot.number }}@if (data.lot.cycle; as cycle) {, ciclo {{ cycle.number }}}
+          {{ data.lot.greenhouse.name }}, lote {{ data.lot.number }}@if (data.cycle; as cycle) {, ciclo {{ cycle.number }}}
         </p>
-        <h1 hlmCardTitle class="text-xl">Registrar acción</h1>
+        <h1 hlmCardTitle class="text-xl">{{ isEdit() ? 'Editar registro' : 'Registrar acción' }}</h1>
       </div>
 
-      @if (data.lot.cycle; as cycle) {
+      @if (data.cycle; as cycle) {
         <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
           <div hlmCardContent>
             <hlm-field-group>
@@ -59,6 +59,9 @@
                     </hlm-select-group>
                   </hlm-select-content>
                 </hlm-select>
+                @if (isEdit()) {
+                  <p hlmFieldDescription>La acción no se cambia. Si te equivocaste de acción, registra una nueva.</p>
+                }
                 <hlm-field-error validator="required">Elige la acción que se hizo.</hlm-field-error>
               </hlm-field>
 
@@ -87,7 +90,7 @@
 
               <hlm-field>
                 <label hlmFieldLabel for="log-date">Fecha</label>
-                <app-date-field inputId="log-date" formControlName="date" [min]="cycle.startDate" [max]="today" />
+                <app-date-field inputId="log-date" formControlName="date" [min]="cycle.startDate" [max]="maxDate()" />
                 <hlm-field-error validator="required">Elige la fecha.</hlm-field-error>
               </hlm-field>
 
@@ -159,12 +162,12 @@
           </div>
 
           <div hlmCardFooter class="mt-6 flex flex-col-reverse gap-2 border-t pt-6 sm:flex-row sm:justify-end">
-            <a hlmBtn variant="ghost" [routerLink]="['/lots', id()]" class="h-11 w-full text-base sm:w-auto">Cancelar</a>
+            <a hlmBtn variant="ghost" [routerLink]="backLink()" class="h-11 w-full text-base sm:w-auto">Cancelar</a>
             <button hlmBtn type="submit" class="h-11 w-full text-base sm:w-auto sm:px-6" [disabled]="saving()">
               @if (saving()) {
                 <hlm-spinner aria-label="Guardando" />
               }
-              Guardar registro
+              {{ isEdit() ? 'Guardar cambios' : 'Guardar registro' }}
             </button>
           </div>
         </form>
@@ -173,7 +176,7 @@
           <p class="text-muted-foreground">Este lote aún no tiene ciclo. Inicia uno desde la vista del lote para registrar acciones.</p>
         </div>
         <div hlmCardFooter>
-          <a hlmBtn [routerLink]="['/lots', id()]">Ir al lote</a>
+          <a hlmBtn [routerLink]="['/lots', data.lot.id]">Ir al lote</a>
         </div>
       }
     </section>

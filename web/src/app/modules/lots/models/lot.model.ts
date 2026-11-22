@@ -53,3 +53,43 @@ export interface LotDetail extends LotSummary {
   logs: ActionLog[];
   cycles: CycleHistoryItem[];
 }
+
+export interface LotRef {
+  id: string;
+  number: number;
+  greenhouse: { id: string; name: string };
+}
+
+export type ChangedField = 'name' | 'phase' | 'date' | 'details' | 'notes';
+
+export interface FieldChange {
+  field: ChangedField;
+  before: unknown;
+  after: unknown;
+}
+
+export interface ActionLogChange {
+  id: string;
+  changedAt: string;
+  user: { id: string; displayName: string };
+  fields: FieldChange[];
+}
+
+export interface ActionLogDetail extends ActionLog {
+  lot: LotRef;
+  cycle: {
+    id: string;
+    number: number;
+    status: 'ACTIVE' | 'CLOSED';
+    startDate: string;
+    endDate: string | null;
+  };
+  /** Newest first. */
+  changes: ActionLogChange[];
+}
+
+export interface CycleDetail extends CycleHistoryItem {
+  lot: LotRef;
+  phase: PhaseRef | null;
+  logs: ActionLog[];
+}

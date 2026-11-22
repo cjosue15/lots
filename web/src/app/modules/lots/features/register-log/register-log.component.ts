@@ -14,18 +14,30 @@ import { HlmSelectImports } from '@spartan-ng/helm/select';
 import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
 import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 import { HlmTextareaImports } from '@spartan-ng/helm/textarea';
-import { firstValueFrom, forkJoin } from 'rxjs';
+import { firstValueFrom, forkJoin, map, type Observable, tap } from 'rxjs';
 import { todayInPeru } from '../../../../shared/peru-date';
 import { DateFieldComponent } from '../../../../shared/ui/date-field.component';
 import {
+  type ActionTemplate,
   type CreateActionLog,
   FERTILIZER_RESULTS,
   type TemplateAction,
+  type UpdateActionLog,
 } from '../../models/action.model';
+import type { ActionLogDetail, DetailType, LotRef } from '../../models/lot.model';
 import { LotsService } from '../../services/lots.service';
 
 /** Value of the "Otra acción" option in the action select. */
 const OTHER = 'other';
+
+/** What the form needs, whether it creates a log or edits one. */
+interface FormContext {
+  lot: LotRef;
+  cycle: { id: string; number: number; startDate: string; endDate: string | null } | null;
+  template: ActionTemplate;
+  /** Only when editing. */
+  log: ActionLogDetail | null;
+}
 
 @Component({
   selector: 'app-register-log',
@@ -51,13 +63,27 @@ export class RegisterLogComponent {
   private readonly router = inject(Router);
   private readonly lotsService = inject(LotsService);
 
-  /** Lot id from the route. */
-  readonly id = input.required<string>();
+  /** Lot id: `/lots/:id/log` registers a new log. */
+  readonly id = input<string>();
+  /** Log id: `/logs/:logId/edit` edits an existing one. */
+  readonly logId = input<string>();
+
+  protected readonly isEdit = computed(() => !!this.logId());
 
   protected readonly data = rxResource({
-    params: () => this.id(),
-    stream: ({ params: id }) =>
-      forkJoin({ lot: this.lotsService.getLot(id), template: this.lotsService.getTemplate() }),
+    params: () => ({ lotId: this.id(), logId: this.logId() }),
+    stream: ({ params }) => this.loadContext(params.lotId, params.logId),
+  });
+
+  /** Cancel / back target. */
+  protected readonly backLink = computed(() =>
+    this.logId() ? ['/logs', this.logId()] : ['/lots', this.id()],
+  );
+
+  /** Latest selectable day: today, or the closing day of a closed cycle. */
+  protected readonly maxDate = computed(() => {
+    const end = this.data.value()?.cycle?.endDate;
+    return end && end < this.today ? end : this.today;
   });
 
   protected readonly OTHER = OTHER;
@@ -98,7 +124,9 @@ export class RegisterLogComponent {
 
   /** Labels shown in the select triggers (the form stores ids). */
   protected readonly actionLabel = (id: string) =>
-    id === OTHER ? 'Otra acción' : (this.actionsById().get(id)?.name ?? '');
+    id === OTHER
+      ? 'Otra acción'
+      : (this.actionsById().get(id)?.name ?? this.data.value()?.log?.name ?? '');
   protected readonly phaseLabel = (id: string) => {
     const phase = this.data.value()?.template.phases.find((p) => p.id === id);
     return phase ? `${phase.order}. ${phase.name}` : 'Sin fase';
@@ -108,13 +136,16 @@ export class RegisterLogComponent {
     FERTILIZER_RESULTS[value as keyof typeof FERTILIZER_RESULTS] ?? '';
 
   protected readonly isOther = computed(() => this.actionId() === OTHER);
-  protected readonly detailType = computed(
-    () => this.actionsById().get(this.actionId())?.detailType ?? 'NONE',
+  protected readonly detailType = computed<DetailType>(
+    () =>
+      this.actionsById().get(this.actionId())?.detailType ??
+      this.data.value()?.log?.detailType ??
+      'NONE',
   );
 
   protected async submit(): Promise<void> {
-    const cycle = this.data.value()?.lot.cycle;
-    if (!cycle) return;
+    const ctx = this.data.value();
+    if (!ctx?.cycle) return;
 
     const value = this.form.getRawValue();
     if (this.isOther() && !value.otherName.trim()) {
@@ -127,9 +158,15 @@ export class RegisterLogComponent {
 
     this.saving.set(true);
     try {
-      await firstValueFrom(this.lotsService.createLog(cycle.id, this.buildBody()));
-      toast.success('Registro guardado');
-      await this.router.navigate(['/lots', this.id()]);
+      if (ctx.log) {
+        await firstValueFrom(this.lotsService.updateLog(ctx.log.id, this.buildUpdate()));
+        toast.success('Cambios guardados');
+        await this.router.navigate(['/logs', ctx.log.id]);
+      } else {
+        await firstValueFrom(this.lotsService.createLog(ctx.cycle.id, this.buildBody()));
+        toast.success('Registro guardado');
+        await this.router.navigate(['/lots', ctx.lot.id]);
+      }
     } catch (error) {
       if (error instanceof HttpErrorResponse && [400, 409].includes(error.status)) {
         const message = error.error?.message;
@@ -140,6 +177,59 @@ export class RegisterLogComponent {
     } finally {
       this.saving.set(false);
     }
+  }
+
+  private loadContext(lotId?: string, logId?: string): Observable<FormContext> {
+    const template = this.lotsService.getTemplate();
+    if (logId) {
+      return forkJoin({ log: this.lotsService.getLog(logId), template }).pipe(
+        map(({ log, template }) => ({ lot: log.lot, cycle: log.cycle, template, log })),
+        tap(({ log }) => this.fillForm(log)),
+      );
+    }
+    return forkJoin({ lot: this.lotsService.getLot(lotId!), template }).pipe(
+      map(({ lot, template }) => ({
+        lot: { id: lot.id, number: lot.number, greenhouse: lot.greenhouse },
+        cycle: lot.cycle ? { ...lot.cycle, endDate: null } : null,
+        template,
+        log: null,
+      })),
+    );
+  }
+
+  /** Loads an existing log into the form. The action itself can't change. */
+  private fillForm(log: ActionLogDetail): void {
+    const details = log.details ?? {};
+    const text = (key: string) => (typeof details[key] === 'string' ? (details[key] as string) : '');
+    const chemical = details['chemicalApplied'];
+
+    this.form.reset({
+      actionId: log.actionId ?? OTHER,
+      otherName: log.actionId ? '' : log.name,
+      otherPhaseId: log.actionId ? '' : (log.phase?.id ?? ''),
+      date: log.date,
+      product: text('product'),
+      dose: text('dose'),
+      humidity: text('humidity'),
+      result: log.detailType === 'PEST_CHECK' ? text('result') : '',
+      chemicalApplied: typeof chemical === 'boolean' ? (chemical ? 'yes' : 'no') : '',
+      fertilizerResult: log.detailType === 'FERTILIZER_EVAL' ? text('result') : '',
+      notes: log.notes ?? '',
+    });
+    this.form.controls.actionId.disable();
+  }
+
+  /** PATCH body: every editable field, `null` clears it. */
+  private buildUpdate(): UpdateActionLog {
+    const v = this.form.getRawValue();
+    const body: UpdateActionLog = { date: v.date, notes: v.notes.trim() || null };
+    if (this.isOther()) {
+      body.name = v.otherName.trim();
+      body.phaseId = v.otherPhaseId || null;
+    } else if (this.detailType() !== 'NONE') {
+      body.details = this.buildDetails() ?? null;
+    }
+    return body;
   }
 
   /** Sends only the fields of the selected action; empty fields are left out. */
@@ -154,6 +244,13 @@ export class RegisterLogComponent {
     }
 
     body.actionId = v.actionId;
+    body.details = this.buildDetails();
+    return body;
+  }
+
+  /** Fields of the selected action's detail type; `undefined` when none was filled. */
+  private buildDetails(): Record<string, unknown> | undefined {
+    const v = this.form.getRawValue();
     const details: Record<string, unknown> = {};
     switch (this.detailType()) {
       case 'APPLICATION':
@@ -172,9 +269,8 @@ export class RegisterLogComponent {
         break;
     }
     const filled = Object.entries(details).filter(
-      ([, value]) => value !== '' && value !== undefined,
+      ([, value]) => typeof value !== 'string' || value.trim() !== '',
     );
-    if (filled.length) body.details = Object.fromEntries(filled);
-    return body;
+    return filled.length ? Object.fromEntries(filled) : undefined;
   }
 }

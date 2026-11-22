@@ -44,6 +44,14 @@ export interface CycleHistoryItem {
   days: number;
 }
 
+/** A cycle with all its logs (used for closed cycles in the history). */
+export interface CycleDetail extends CycleHistoryItem {
+  lot: { id: string; number: number; greenhouse: { id: string; name: string } };
+  /** Phase reached in the cycle (rule B). */
+  phase: PhaseRef | null;
+  logs: ActionLogResponse[];
+}
+
 export interface LotDetail extends LotSummary {
   logs: ActionLogResponse[];
   cycles: CycleHistoryItem[];
@@ -104,18 +112,29 @@ export class LotsService {
     return {
       ...summary,
       logs: logs.map((row) => toActionLogResponse(row, viewer)),
-      cycles: cycles.map((cycle) => {
-        const start = fromDbDate(cycle.startDate);
-        const end = cycle.endDate ? fromDbDate(cycle.endDate) : null;
-        return {
-          id: cycle.id,
-          number: cycle.number,
-          startDate: start,
-          endDate: end,
-          status: cycle.status,
-          days: daysBetween(start, end ?? today),
-        };
-      }),
+      cycles: cycles.map((cycle) => this.toHistoryItem(cycle, today)),
+    };
+  }
+
+  async findCycle(id: string, viewer: AuthUser): Promise<CycleDetail> {
+    const cycle = await this.prisma.cycle.findUnique({
+      where: { id },
+      include: {
+        lot: { select: { id: true, number: true, greenhouse: { select: { id: true, name: true } } } },
+        actionLogs: {
+          orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+          select: actionLogSelect,
+        },
+      },
+    });
+    if (!cycle) {
+      throw new NotFoundException('El ciclo no existe');
+    }
+    return {
+      ...this.toHistoryItem(cycle, todayInPeru()),
+      lot: cycle.lot,
+      phase: currentPhase(cycle.actionLogs),
+      logs: cycle.actionLogs.map((row) => toActionLogResponse(row, viewer)),
     };
   }
 
@@ -170,6 +189,22 @@ export class LotsService {
     }
 
     return this.findOne(lotId, user);
+  }
+
+  private toHistoryItem(
+    cycle: { id: string; number: number; startDate: Date; endDate: Date | null; status: 'ACTIVE' | 'CLOSED' },
+    today: string,
+  ): CycleHistoryItem {
+    const start = fromDbDate(cycle.startDate);
+    const end = cycle.endDate ? fromDbDate(cycle.endDate) : null;
+    return {
+      id: cycle.id,
+      number: cycle.number,
+      startDate: start,
+      endDate: end,
+      status: cycle.status,
+      days: daysBetween(start, end ?? today),
+    };
   }
 
   private toSummary(lot: LotWithActiveCycle, today: string): LotSummary {

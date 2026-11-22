@@ -24,3 +24,12 @@ export const FERTILIZER_RESULTS = {
   WORKED: 'Funcionó bien',
   CHANGE: 'Hay que cambiarlo',
 } as const;
+
+/** PATCH body. `null` clears a field. */
+export interface UpdateActionLog {
+  name?: string;
+  phaseId?: string | null;
+  date?: string;
+  details?: Record<string, unknown> | null;
+  notes?: string | null;
+}

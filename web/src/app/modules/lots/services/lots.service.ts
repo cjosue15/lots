@@ -2,8 +2,14 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
 import { Observable, of, tap } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import type { ActionTemplate, CreateActionLog } from '../models/action.model';
-import type { ActionLog, LotDetail, LotSummary } from '../models/lot.model';
+import type { ActionTemplate, CreateActionLog, UpdateActionLog } from '../models/action.model';
+import type {
+  ActionLog,
+  ActionLogDetail,
+  CycleDetail,
+  LotDetail,
+  LotSummary,
+} from '../models/lot.model';
 
 @Service()
 export class LotsService {
@@ -36,5 +42,17 @@ export class LotsService {
 
   createLog(cycleId: string, body: CreateActionLog): Observable<ActionLog> {
     return this.http.post<ActionLog>(`${this.api}/cycles/${cycleId}/logs`, body);
+  }
+
+  getLog(id: string): Observable<ActionLogDetail> {
+    return this.http.get<ActionLogDetail>(`${this.api}/logs/${id}`);
+  }
+
+  updateLog(id: string, body: UpdateActionLog): Observable<ActionLog> {
+    return this.http.patch<ActionLog>(`${this.api}/logs/${id}`, body);
+  }
+
+  getCycle(id: string): Observable<CycleDetail> {
+    return this.http.get<CycleDetail>(`${this.api}/cycles/${id}`);
   }
 }

@@ -21,4 +21,26 @@ export const lotsRoutes: Routes = [
         (m) => m.RegisterLogComponent,
       ),
   },
+  {
+    path: 'logs/:logId',
+    title: 'Registro | Oro Verde',
+    loadComponent: () =>
+      import('./features/log-detail/log-detail.component').then((m) => m.LogDetailComponent),
+  },
+  {
+    path: 'logs/:logId/edit',
+    title: 'Editar registro | Oro Verde',
+    loadComponent: () =>
+      import('./features/register-log/register-log.component').then(
+        (m) => m.RegisterLogComponent,
+      ),
+  },
+  {
+    path: 'cycles/:cycleId',
+    title: 'Ciclo | Oro Verde',
+    loadComponent: () =>
+      import('./features/cycle-detail/cycle-detail.component').then(
+        (m) => m.CycleDetailComponent,
+      ),
+  },
 ];

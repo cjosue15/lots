@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import type { AuthUser } from '../auth/auth-user.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import { uuidParam } from '../common/schemas.js';
-import type { ActionLogResponse } from './action-log.response.js';
+import type { ActionLogDetailResponse, ActionLogResponse } from './action-log.response.js';
 import {
   type CreateActionLog,
   createActionLogSchema,
@@ -28,7 +28,7 @@ export class ActionLogsController {
   findOne(
     @Param('id', { schema: uuidParam }) id: string,
     @CurrentUser() user: AuthUser,
-  ): Promise<ActionLogResponse> {
+  ): Promise<ActionLogDetailResponse> {
     return this.logs.findOne(id, user);
   }
 

@@ -10,10 +10,13 @@ import type { AuthUser } from '../auth/auth-user.js';
 import { fromDbDate, todayInPeru, toDbDate } from '../common/peru-date.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
+  actionLogDetailSelect,
+  type ActionLogDetailResponse,
   actionLogSelect,
   type ActionLogResponse,
   toActionLogResponse,
 } from './action-log.response.js';
+import { diffSnapshots, type LogSnapshot } from './log-changes.js';
 import {
   type CreateActionLog,
   detailSchemas,
@@ -85,7 +88,7 @@ export class ActionLogsService {
       throw new ForbiddenException('Solo puedes editar tus propios registros');
     }
 
-    const before = {
+    const before: LogSnapshot = {
       name: log.name,
       phaseId: log.phaseId,
       date: fromDbDate(log.date),
@@ -116,7 +119,11 @@ export class ActionLogsService {
     if (body.notes !== undefined) after.notes = body.notes ?? null;
 
     if (JSON.stringify(before) === JSON.stringify(after)) {
-      return this.findOne(id, user);
+      const row = await this.prisma.actionLog.findUniqueOrThrow({
+        where: { id },
+        select: actionLogSelect,
+      });
+      return toActionLogResponse(row, user);
     }
 
     // The change row goes first so the returned log already counts as edited.
@@ -125,8 +132,8 @@ export class ActionLogsService {
         data: {
           actionLogId: id,
           userId: user.id,
-          before: before as Prisma.InputJsonValue,
-          after: after as Prisma.InputJsonValue,
+          before: before as unknown as Prisma.InputJsonValue,
+          after: after as unknown as Prisma.InputJsonValue,
         },
       }),
       this.prisma.actionLog.update({
@@ -144,12 +151,44 @@ export class ActionLogsService {
     return toActionLogResponse(row, user);
   }
 
-  async findOne(id: string, user: AuthUser): Promise<ActionLogResponse> {
-    const row = await this.prisma.actionLog.findUnique({ where: { id }, select: actionLogSelect });
+  async findOne(id: string, user: AuthUser): Promise<ActionLogDetailResponse> {
+    const row = await this.prisma.actionLog.findUnique({
+      where: { id },
+      select: actionLogDetailSelect,
+    });
     if (!row) {
       throw new NotFoundException('El registro no existe');
     }
-    return toActionLogResponse(row, user);
+
+    // Only 8 phases: one small query turns stored phase ids into labels.
+    const phases = row.changes.length
+      ? await this.prisma.phase.findMany({ select: { id: true, order: true, name: true } })
+      : [];
+    const labels = new Map(phases.map((phase) => [phase.id, `${phase.order}. ${phase.name}`]));
+    const phaseLabel = (phaseId: string) => labels.get(phaseId) ?? 'Fase eliminada';
+
+    const { cycle } = row;
+    return {
+      ...toActionLogResponse(row, user),
+      lot: cycle.lot,
+      cycle: {
+        id: cycle.id,
+        number: cycle.number,
+        status: cycle.status,
+        startDate: fromDbDate(cycle.startDate),
+        endDate: cycle.endDate ? fromDbDate(cycle.endDate) : null,
+      },
+      changes: row.changes.map((change) => ({
+        id: change.id,
+        changedAt: change.changedAt,
+        user: change.user,
+        fields: diffSnapshots(
+          change.before as Partial<LogSnapshot>,
+          change.after as Partial<LogSnapshot>,
+          phaseLabel,
+        ),
+      })),
+    };
   }
 
   /** Validates extra fields; stores `null` when nothing was filled. */

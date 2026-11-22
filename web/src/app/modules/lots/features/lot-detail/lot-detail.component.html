@@ -86,37 +86,11 @@
     <section class="mt-8" aria-labelledby="logs-title">
       <h2 id="logs-title" class="px-1 text-lg font-semibold">Registros del ciclo</h2>
 
-      @for (day of days(); track day.date) {
-        <h3 class="mt-5 px-1 text-sm font-medium text-muted-foreground">{{ relativeDay(day.date) }}</h3>
-        <ul class="mt-2 divide-y overflow-hidden rounded-lg border bg-card">
-          @for (log of day.logs; track log.id) {
-            <li class="px-4 py-3">
-              <div class="flex items-baseline justify-between gap-3">
-                <p class="font-medium">{{ log.name }}</p>
-                <p class="shrink-0 text-xs text-muted-foreground">
-                  {{ log.phase ? 'Fase ' + log.phase.order : 'General' }}
-                </p>
-              </div>
-              @for (line of describeDetails(log.details); track line) {
-                <p class="text-sm">{{ line }}</p>
-              }
-              @if (log.notes) {
-                <p class="mt-1 text-sm whitespace-pre-line text-muted-foreground">{{ log.notes }}</p>
-              }
-              <p class="mt-1.5 text-xs text-muted-foreground">
-                {{ log.user.displayName }}@if (log.edited) {, editado}
-              </p>
-            </li>
-          }
-        </ul>
-      } @empty {
-        <div class="mt-3 rounded-lg border border-dashed p-6 text-center">
-          <p class="font-medium">Aún no hay registros en este ciclo.</p>
-          <p class="mt-1 text-sm text-muted-foreground">
-            Usa "Registrar acción" para anotar lo que se hizo hoy.
-          </p>
-        </div>
-      }
+      <app-log-list
+        [logs]="lot.logs"
+        emptyTitle="Aún no hay registros en este ciclo."
+        emptyHint='Usa "Registrar acción" para anotar lo que se hizo hoy.'
+      />
     </section>
   } @else {
     <!-- No active cycle yet -->
@@ -132,6 +106,30 @@
         Iniciar ciclo {{ nextCycleNumber() }}
       </button>
     </div>
+  }
+
+  @if (closedCycles().length) {
+    <section class="mt-10" aria-labelledby="history-title">
+      <h2 id="history-title" class="px-1 text-lg font-semibold">Ciclos anteriores</h2>
+      <ul class="mt-3 divide-y overflow-hidden rounded-lg border bg-card">
+        @for (past of closedCycles(); track past.id) {
+          <li>
+            <a
+              [routerLink]="['/cycles', past.id]"
+              class="flex items-center gap-3 px-4 py-3 hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+            >
+              <span class="min-w-0 flex-1">
+                <span class="block font-medium">Ciclo {{ past.number }}</span>
+                <span class="block text-sm text-muted-foreground tabular-nums">
+                  {{ formatDay(past.startDate) }} al {{ formatDay(past.endDate!) }}, {{ past.days }} días
+                </span>
+              </span>
+              <ng-icon name="lucideChevronRight" size="16" class="shrink-0 text-muted-foreground" aria-hidden="true" />
+            </a>
+          </li>
+        }
+      </ul>
+    </section>
   }
 }
 </div>

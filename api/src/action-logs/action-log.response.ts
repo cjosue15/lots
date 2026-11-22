@@ -1,6 +1,7 @@
 import type { Prisma } from '../generated/prisma/client.js';
 import type { AuthUser } from '../auth/auth-user.js';
 import { fromDbDate } from '../common/peru-date.js';
+import type { FieldChange } from './log-changes.js';
 
 /** Prisma `select` shared by every query that returns logs. */
 export const actionLogSelect = {
@@ -56,4 +57,49 @@ export function toActionLogResponse(row: ActionLogRow, viewer: AuthUser): Action
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
+}
+
+/** Extra data for the log detail screen: where it belongs and its edit history. */
+export const actionLogDetailSelect = {
+  ...actionLogSelect,
+  cycle: {
+    select: {
+      id: true,
+      number: true,
+      status: true,
+      startDate: true,
+      endDate: true,
+      lot: { select: { id: true, number: true, greenhouse: { select: { id: true, name: true } } } },
+    },
+  },
+  changes: {
+    orderBy: { changedAt: 'desc' },
+    select: {
+      id: true,
+      changedAt: true,
+      before: true,
+      after: true,
+      user: { select: { id: true, displayName: true } },
+    },
+  },
+} satisfies Prisma.ActionLogSelect;
+
+export interface ActionLogChangeResponse {
+  id: string;
+  changedAt: Date;
+  user: { id: string; displayName: string };
+  fields: FieldChange[];
+}
+
+export interface ActionLogDetailResponse extends ActionLogResponse {
+  lot: { id: string; number: number; greenhouse: { id: string; name: string } };
+  cycle: {
+    id: string;
+    number: number;
+    status: 'ACTIVE' | 'CLOSED';
+    startDate: string;
+    endDate: string | null;
+  };
+  /** Newest first. */
+  changes: ActionLogChangeResponse[];
 }

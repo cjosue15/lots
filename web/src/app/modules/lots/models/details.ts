@@ -1,21 +1,37 @@
 import { FERTILIZER_RESULTS } from './action.model';
 
+/** Detail keys in form order, with their Spanish label. */
+export const DETAIL_LABELS: Record<string, string> = {
+  product: 'Producto',
+  dose: 'Dosis',
+  humidity: 'Humedad',
+  result: 'Resultado',
+  chemicalApplied: '¿Se aplicó químico?',
+};
+
+/** Readable value of one detail field, or null when it is empty. */
+export function describeDetailValue(key: string, value: unknown): string | null {
+  if (key === 'chemicalApplied') {
+    return typeof value === 'boolean' ? (value ? 'Sí' : 'No') : null;
+  }
+  if (key === 'result' && (value === 'WORKED' || value === 'CHANGE')) {
+    return FERTILIZER_RESULTS[value];
+  }
+  return typeof value === 'string' && value ? value : null;
+}
+
 /** Human-readable lines for a log's extra fields, in form order. */
 export function describeDetails(details: Record<string, unknown> | null): string[] {
   if (!details) return [];
   const lines: string[] = [];
-  const text = (key: string) => (typeof details[key] === 'string' ? (details[key] as string) : null);
-
-  if (text('product')) lines.push(`Producto: ${text('product')}`);
-  if (text('dose')) lines.push(`Dosis: ${text('dose')}`);
-  if (text('humidity')) lines.push(`Humedad: ${text('humidity')}`);
-  if (details['result'] === 'WORKED' || details['result'] === 'CHANGE') {
-    lines.push(`Resultado: ${FERTILIZER_RESULTS[details['result']]}`);
-  } else if (text('result')) {
-    lines.push(`Resultado: ${text('result')}`);
-  }
-  if (typeof details['chemicalApplied'] === 'boolean') {
-    lines.push(details['chemicalApplied'] ? 'Se aplicó químico' : 'No se aplicó químico');
+  for (const [key, label] of Object.entries(DETAIL_LABELS)) {
+    const value = describeDetailValue(key, details[key]);
+    if (value === null) continue;
+    if (key === 'chemicalApplied') {
+      lines.push(details[key] ? 'Se aplicó químico' : 'No se aplicó químico');
+    } else {
+      lines.push(`${label}: ${value}`);
+    }
   }
   return lines;
 }

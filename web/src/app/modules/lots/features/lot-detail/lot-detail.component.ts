@@ -3,23 +3,17 @@ import { Component, computed, inject, input, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideChevronLeft, lucidePlus, lucideRefreshCw } from '@ng-icons/lucide';
+import { lucideChevronLeft, lucideChevronRight, lucidePlus, lucideRefreshCw } from '@ng-icons/lucide';
 import { toast } from '@spartan-ng/brain/sonner';
 import { HlmAlertDialogImports } from '@spartan-ng/helm/alert-dialog';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
 import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 import { firstValueFrom } from 'rxjs';
-import { formatDay, relativeDay } from '../../../../shared/peru-date';
+import { formatDay } from '../../../../shared/peru-date';
+import { LogListComponent } from '../../components/log-list.component';
 import { PhaseBarComponent } from '../../components/phase-bar.component';
-import { describeDetails } from '../../models/details';
-import type { ActionLog } from '../../models/lot.model';
 import { LotsService } from '../../services/lots.service';
-
-interface DayGroup {
-  date: string;
-  logs: ActionLog[];
-}
 
 @Component({
   selector: 'app-lot-detail',
@@ -30,9 +24,10 @@ interface DayGroup {
     HlmButtonImports,
     HlmSkeletonImports,
     HlmSpinnerImports,
+    LogListComponent,
     PhaseBarComponent,
   ],
-  providers: [provideIcons({ lucideChevronLeft, lucidePlus, lucideRefreshCw })],
+  providers: [provideIcons({ lucideChevronLeft, lucideChevronRight, lucidePlus, lucideRefreshCw })],
   templateUrl: './lot-detail.component.html',
 })
 export class LotDetailComponent {
@@ -49,23 +44,11 @@ export class LotDetailComponent {
 
   protected readonly nextCycleNumber = computed(() => (this.lot.value()?.cycle?.number ?? 0) + 1);
 
-  /** Logs of the active cycle grouped by day (newest first, as the API sends them). */
-  protected readonly days = computed<DayGroup[]>(() => {
-    const groups: DayGroup[] = [];
-    for (const log of this.lot.value()?.logs ?? []) {
-      const last = groups.at(-1);
-      if (last?.date === log.date) {
-        last.logs.push(log);
-      } else {
-        groups.push({ date: log.date, logs: [log] });
-      }
-    }
-    return groups;
-  });
+  protected readonly closedCycles = computed(
+    () => this.lot.value()?.cycles.filter((cycle) => cycle.status === 'CLOSED') ?? [],
+  );
 
   protected readonly formatDay = formatDay;
-  protected readonly relativeDay = relativeDay;
-  protected readonly describeDetails = describeDetails;
 
   protected async startCycle(): Promise<void> {
     const number = this.nextCycleNumber();
