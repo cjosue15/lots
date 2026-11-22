@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DObject, CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 import { type Activity, daysWithoutLogs } from '../activity';
-import { BED, type FarmLayout } from '../layout';
+import type { FarmLayout } from '../layout';
 import { buildBed } from './beds';
 import { buildGreenhouse } from './greenhouse';
 import { COLORS, SceneAssets } from './materials';
@@ -107,7 +107,18 @@ export class FarmScene {
     this.controls.minDistance = 6;
     this.controls.maxDistance = 220;
     this.controls.screenSpacePanning = false;
-    this.controls.addEventListener('change', () => this.requestRender());
+    // Map-style: drag (one finger) moves over the field, right drag (two fingers) turns.
+    this.controls.mouseButtons = {
+      LEFT: THREE.MOUSE.PAN,
+      MIDDLE: THREE.MOUSE.DOLLY,
+      RIGHT: THREE.MOUSE.ROTATE,
+    };
+    this.controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
+    this.controls.zoomToCursor = true;
+    this.controls.addEventListener('change', () => {
+      this.keepInside();
+      this.requestRender();
+    });
 
     const canvas = this.renderer.domElement;
     canvas.addEventListener('pointermove', this.onPointerMove);
@@ -136,43 +147,35 @@ export class FarmScene {
     const unitBox = this.assets.geometry('unit-box', () => new THREE.BoxGeometry(1, 1, 1));
 
     for (const gh of layout.greenhouses) {
-      const house = buildGreenhouse(this.assets, gh.width, gh.depth);
-      house.position.set(gh.x, 0, gh.z);
-      this.content.add(house);
+      this.content.add(buildGreenhouse(this.assets, gh));
       const ghLabel = this.label(gh.name, 'greenhouse', gh.x, 0.3, gh.z);
       this.greenhouseLabels.push({ label: ghLabel, ...gh });
       this.content.add(ghLabel);
 
-      for (const { lot, x, z } of gh.beds) {
+      for (const { lot, x, z, width, depth } of gh.beds) {
         const state = activity.get(lot.id) ?? 'idle';
         const phase = lot.cycle?.phase?.order ?? null;
         const { group } = buildBed(this.assets, {
-          width: BED.width,
-          depth: BED.depth,
+          width,
+          depth,
           phase,
           seed: lot.number * 7919 + gh.name.length,
         });
         group.position.set(x, 0, z);
         this.content.add(group);
 
-        const frame = this.frame(x, z);
+        const frame = this.frame(x, z, width, depth);
         this.content.add(frame);
         this.beds.set(lot.id, { frame, activity: state });
 
         const hit = new THREE.Mesh(unitBox, hitMaterial);
-        hit.scale.set(BED.width, 2.6, BED.depth);
+        hit.scale.set(width, 2.6, depth);
         hit.position.set(x, 1.3, z);
         hit.userData['lotId'] = lot.id;
         this.hitBoxes.push(hit);
         this.content.add(hit);
 
-        const label = this.label(
-          String(lot.number),
-          `lot ${state}`,
-          x,
-          0.25,
-          z + BED.depth / 2 + 0.7,
-        );
+        const label = this.label(String(lot.number), `lot ${state}`, x, 0.25, z + depth / 2 + 0.7);
         if (state === 'stale') appendStaleDays(label.element, daysWithoutLogs(lot) ?? 0);
         this.content.add(label);
       }
@@ -186,14 +189,20 @@ export class FarmScene {
   focus(greenhouseId: string | null, instant = false): void {
     const layout = this.layout;
     if (!layout) return;
-    const gh = layout.greenhouses.find((g) => g.id === greenhouseId);
+    const gh =
+      layout.greenhouses.length === 1
+        ? layout.greenhouses[0]
+        : layout.greenhouses.find((g) => g.id === greenhouseId);
     const center = new THREE.Vector3(gh?.x ?? 0, 0, gh?.z ?? 0);
-    // On portrait screens look from the side, so the long axis runs down the screen.
+    // Look from the side (+x) on portrait screens, so the greenhouses stack down
+    // the screen. A single greenhouse is seen from whichever side lines its long
+    // side up with the screen's; z then runs across the screen.
     const portrait = this.camera.aspect < 0.9;
     const across = gh ? gh.width : layout.width;
     const along = gh ? gh.depth : layout.depth;
-    const width = portrait ? along : across;
-    const depth = portrait ? across : along;
+    const side = gh ? portrait !== along > across : portrait;
+    const width = side ? along : across;
+    const depth = side ? across : along;
     // Distance that fits the box in both directions of the field of view.
     const vFov = THREE.MathUtils.degToRad(this.camera.fov);
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * this.camera.aspect);
@@ -202,14 +211,14 @@ export class FarmScene {
       depth / 2;
     const elevation = THREE.MathUtils.degToRad(portrait ? 62 : 55);
     const ground = Math.cos(elevation) * distance;
-    const offset = portrait
+    const offset = side
       ? new THREE.Vector3(ground, Math.sin(elevation) * distance, 0)
       : new THREE.Vector3(0, Math.sin(elevation) * distance, ground);
     const position = center.clone().add(offset);
 
-    // Greenhouse names go on the edge nearest the camera: front, or the end on portrait.
+    // Greenhouse names go on the edge nearest the camera: front, or the end from the side.
     for (const { label, x, z, width: w, depth: d } of this.greenhouseLabels) {
-      label.position.set(portrait ? x + w / 2 + 1.6 : x, 0.3, portrait ? z : z + d / 2 + 1.6);
+      label.position.set(side ? x + w / 2 + 1.6 : x, 0.3, side ? z : z + d / 2 + 1.6);
     }
 
     if (instant || this.options.reducedMotion) {
@@ -264,13 +273,27 @@ export class FarmScene {
     this.scene.add(sun);
   }
 
+  /** Keeps the point the camera looks at over the farm, so it cannot drift away. */
+  private keepInside(): void {
+    if (!this.layout) return;
+    const target = this.controls.target;
+    const halfWidth = this.layout.width / 2;
+    const halfDepth = this.layout.depth / 2;
+    const x = THREE.MathUtils.clamp(target.x, -halfWidth, halfWidth);
+    const z = THREE.MathUtils.clamp(target.z, -halfDepth, halfDepth);
+    if (x === target.x && z === target.z && target.y === 0) return;
+    const shift = new THREE.Vector3(x - target.x, -target.y, z - target.z);
+    target.add(shift);
+    this.camera.position.add(shift);
+  }
+
   /** Thin border around a bed, shown for "today" and hover/selection. */
-  private frame(x: number, z: number): THREE.Group {
+  private frame(x: number, z: number, width: number, depth: number): THREE.Group {
     const group = new THREE.Group();
     const t = 0.12;
     const unitBox = this.assets.geometry('unit-box', () => new THREE.BoxGeometry(1, 1, 1));
-    const w = BED.width + 0.3;
-    const d = BED.depth + 0.3;
+    const w = width + 0.3;
+    const d = depth + 0.3;
     const sides: [number, number, number, number][] = [
       [w, t, 0, -d / 2],
       [w, t, 0, d / 2],
@@ -383,7 +406,7 @@ export class FarmScene {
   private readonly onPointerMove = (event: PointerEvent): void => {
     if (event.pointerType !== 'mouse' || event.buttons) return;
     const lotId = this.pick(event);
-    this.renderer.domElement.style.cursor = lotId ? 'pointer' : '';
+    this.renderer.domElement.style.cursor = lotId ? 'pointer' : 'grab';
     if (lotId !== this.hovered) {
       this.hovered = lotId;
       this.refreshFrames();

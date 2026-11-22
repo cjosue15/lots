@@ -20,7 +20,12 @@ export const COLORS = {
   driedDark: 0x8c7448,
   string: 0xe8e2d4,
   frame: 0x9aa3a0,
-  roof: 0xf4f7f2,
+  concrete: 0xb9b5ab,
+  water: 0x3f7f8a,
+  shrub: 0x3f6f32,
+  adobe: 0xc8ad86,
+  door: 0x5a4632,
+  tin: 0xa7adaf,
   today: 0xe0a526,
   hover: 0xffffff,
 } as const;

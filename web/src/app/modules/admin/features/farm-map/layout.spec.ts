@@ -38,6 +38,20 @@ describe('computeLayout', () => {
   });
 });
 
+describe('El Dorado shape', () => {
+  it('stacks its lots in one column, lot 1 at the front', () => {
+    const [dorado] = computeLayout([
+      lot('El Dorado', 2),
+      lot('El Dorado', 1),
+      lot('El Dorado', 3),
+    ]).greenhouses;
+    expect(new Set(dorado.beds.map((b) => b.x)).size).toBe(1);
+    const backToFront = [...dorado.beds].sort((a, b) => a.z - b.z).map((b) => b.lot.number);
+    expect(backToFront).toEqual([3, 2, 1]);
+    expect(dorado.depth).toBeGreaterThan(dorado.width);
+  });
+});
+
 describe('activityOf', () => {
   const cycle = (startDate: string, lastLog: string | null) => ({
     id: 'c',

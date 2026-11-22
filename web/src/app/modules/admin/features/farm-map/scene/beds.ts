@@ -1,15 +1,15 @@
 import * as THREE from 'three';
 import { COLORS, type SceneAssets } from './materials';
 
-/** Ridges (camellones) per bed and their spacing. */
-const RIDGES = 3;
+/** Ridges are about a metre apart: 3 in a schematic bed, more in wider fields. */
+const RIDGE_SPACING = 1;
 const RIDGE_WIDTH = 0.6;
 const RIDGE_HEIGHT = 0.22;
 const SOIL_HEIGHT = 0.12;
 const PLANT_SPACING = 0.45;
 
 /** Small deterministic PRNG, so a bed looks the same on every render. */
-function random(seed: number): () => number {
+export function random(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
@@ -70,8 +70,9 @@ function box(
 
 /** x of each ridge centre inside a bed of the given width. */
 function ridgeXs(width: number): number[] {
-  const step = width / RIDGES;
-  return Array.from({ length: RIDGES }, (_, i) => -width / 2 + step / 2 + i * step);
+  const ridges = Math.max(1, Math.round(width / RIDGE_SPACING));
+  const step = width / ridges;
+  return Array.from({ length: ridges }, (_, i) => -width / 2 + step / 2 + i * step);
 }
 
 /** Plant positions along every ridge. */
