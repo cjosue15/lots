@@ -1,0 +1,62 @@
+<h1 class="text-2xl font-semibold">Lotes</h1>
+
+@if (lots.isLoading() && !lots.hasValue()) {
+  <div class="mt-6 flex flex-col gap-2" aria-busy="true" aria-label="Cargando lotes">
+    @for (row of [1, 2, 3, 4, 5]; track row) {
+      <hlm-skeleton class="h-[4.5rem] w-full rounded-lg" />
+    }
+  </div>
+} @else if (lots.error()) {
+  <div class="mt-6 rounded-lg border bg-card p-4">
+    <p class="font-medium">No se pudieron cargar los lotes.</p>
+    <p class="mt-1 text-sm text-muted-foreground">Revisa tu conexión y vuelve a intentarlo.</p>
+    <button hlmBtn variant="outline" class="mt-4" (click)="lots.reload()">Reintentar</button>
+  </div>
+} @else {
+  @for (group of groups(); track group.name) {
+    <section class="mt-8 first-of-type:mt-6" [attr.aria-labelledby]="'gh-' + $index">
+      <h2 [id]="'gh-' + $index" class="flex items-baseline justify-between px-1">
+        <span class="text-lg font-semibold">{{ group.name }}</span>
+        <span class="text-sm text-muted-foreground">{{ group.lots.length }} lotes</span>
+      </h2>
+
+      <ul class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        @for (lot of group.lots; track lot.id) {
+          <li class="min-w-0">
+            <a
+              [routerLink]="['/lots', lot.id]"
+              class="flex h-full items-center gap-4 rounded-lg border bg-card px-4 py-3 hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+            >
+              <span
+                class="flex size-11 shrink-0 items-center justify-center rounded-md bg-secondary text-lg font-semibold tabular-nums"
+                aria-hidden="true"
+              >
+                {{ lot.number }}
+              </span>
+
+              <span class="min-w-0 flex-1">
+                <span class="sr-only">Lote {{ lot.number }}.</span>
+                @if (lot.cycle; as cycle) {
+                  <span class="block font-medium">{{ cycle.phase?.name ?? 'Sin registros' }}</span>
+                  <app-phase-bar class="mt-1.5" [order]="cycle.phase?.order ?? null" />
+                  <span class="mt-1.5 block text-sm text-muted-foreground tabular-nums">
+                    Ciclo {{ cycle.number }}, día {{ cycle.days }}
+                  </span>
+                  @if (cycle.lastLog; as last) {
+                    <span class="block truncate text-sm text-muted-foreground">
+                      Último: {{ last.name }}, {{ relativeDay(last.date).toLowerCase() }}
+                    </span>
+                  }
+                } @else {
+                  <span class="block font-medium text-muted-foreground">Sin ciclo activo</span>
+                }
+              </span>
+
+              <ng-icon name="lucideChevronRight" size="18" class="shrink-0 text-muted-foreground" aria-hidden="true" />
+            </a>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+}

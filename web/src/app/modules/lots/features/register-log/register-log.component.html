@@ -1,0 +1,181 @@
+<div class="mx-auto w-full max-w-lg">
+  <a
+    [routerLink]="['/lots', id()]"
+    class="-ml-1 inline-flex items-center gap-1 rounded-md px-1 py-1 text-sm text-muted-foreground hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+  >
+    <ng-icon name="lucideChevronLeft" size="16" aria-hidden="true" />
+    Volver al lote
+  </a>
+
+  @if (data.isLoading() && !data.hasValue()) {
+    <hlm-skeleton class="mt-3 block h-[28rem] w-full rounded-xl" aria-busy="true" aria-label="Cargando formulario" />
+  } @else if (data.error()) {
+    <section hlmCard class="mt-3">
+      <div hlmCardHeader>
+        <h1 hlmCardTitle>No se pudo cargar el formulario</h1>
+        <p hlmCardDescription>Revisa tu conexión y vuelve a intentarlo.</p>
+      </div>
+      <div hlmCardFooter>
+        <button hlmBtn variant="outline" (click)="data.reload()">Reintentar</button>
+      </div>
+    </section>
+  } @else if (data.value(); as data) {
+    <section hlmCard class="mt-3 shadow-sm">
+      <div hlmCardHeader>
+        <p hlmCardDescription>
+          {{ data.lot.greenhouse.name }}, lote {{ data.lot.number }}@if (data.lot.cycle; as cycle) {, ciclo {{ cycle.number }}}
+        </p>
+        <h1 hlmCardTitle class="text-xl">Registrar acción</h1>
+      </div>
+
+      @if (data.lot.cycle; as cycle) {
+        <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+          <div hlmCardContent>
+            <hlm-field-group>
+              <hlm-field>
+                <label hlmFieldLabel for="log-action">Acción</label>
+                <hlm-select formControlName="actionId" [itemToString]="actionLabel">
+                  <hlm-select-trigger buttonId="log-action" class="w-full">
+                    <hlm-select-value placeholder="Elige qué se hizo" />
+                  </hlm-select-trigger>
+                  <hlm-select-content *hlmSelectPortal class="max-h-80">
+                    @for (phase of data.template.phases; track phase.id) {
+                      <hlm-select-group>
+                        <hlm-select-label>{{ phase.order }}. {{ phase.name }}</hlm-select-label>
+                        @for (action of phase.actions; track action.id) {
+                          <hlm-select-item [value]="action.id">{{ action.name }}</hlm-select-item>
+                        }
+                      </hlm-select-group>
+                    }
+                    <hlm-select-group>
+                      <hlm-select-label>Acciones generales</hlm-select-label>
+                      @for (action of data.template.general; track action.id) {
+                        <hlm-select-item [value]="action.id">{{ action.name }}</hlm-select-item>
+                      }
+                    </hlm-select-group>
+                    <hlm-select-group>
+                      <hlm-select-label>Otra</hlm-select-label>
+                      <hlm-select-item [value]="OTHER">Otra acción</hlm-select-item>
+                    </hlm-select-group>
+                  </hlm-select-content>
+                </hlm-select>
+                <hlm-field-error validator="required">Elige la acción que se hizo.</hlm-field-error>
+              </hlm-field>
+
+              @if (isOther()) {
+                <hlm-field>
+                  <label hlmFieldLabel for="log-other-name">Qué se hizo</label>
+                  <input hlmInput id="log-other-name" formControlName="otherName" />
+                  <hlm-field-error validator="required">Escribe qué se hizo.</hlm-field-error>
+                </hlm-field>
+                <hlm-field>
+                  <label hlmFieldLabel for="log-other-phase">Fase</label>
+                  <hlm-select formControlName="otherPhaseId" [itemToString]="phaseLabel">
+                    <hlm-select-trigger buttonId="log-other-phase" class="w-full">
+                      <hlm-select-value placeholder="Sin fase" />
+                    </hlm-select-trigger>
+                    <hlm-select-content *hlmSelectPortal>
+                      <hlm-select-item value="">Sin fase</hlm-select-item>
+                      @for (phase of data.template.phases; track phase.id) {
+                        <hlm-select-item [value]="phase.id">{{ phase.order }}. {{ phase.name }}</hlm-select-item>
+                      }
+                    </hlm-select-content>
+                  </hlm-select>
+                  <p hlmFieldDescription>Sin fase, el registro no cambia la fase del lote.</p>
+                </hlm-field>
+              }
+
+              <hlm-field>
+                <label hlmFieldLabel for="log-date">Fecha</label>
+                <app-date-field inputId="log-date" formControlName="date" [min]="cycle.startDate" [max]="today" />
+                <hlm-field-error validator="required">Elige la fecha.</hlm-field-error>
+              </hlm-field>
+
+              @if (detailType() !== 'NONE') {
+                <!-- Extra fields of the selected action (all optional) -->
+                <div role="group" aria-labelledby="log-details-title" class="rounded-lg bg-muted/60 p-4">
+                  <p id="log-details-title" class="mb-3 text-sm font-medium">Detalles (opcional)</p>
+                  <hlm-field-group class="gap-4">
+                    @switch (detailType()) {
+                      @case ('APPLICATION') {
+                        <hlm-field>
+                          <label hlmFieldLabel for="log-product">Producto</label>
+                          <input hlmInput id="log-product" formControlName="product" class="bg-card" />
+                        </hlm-field>
+                        <hlm-field>
+                          <label hlmFieldLabel for="log-dose">Dosis</label>
+                          <input hlmInput id="log-dose" formControlName="dose" placeholder="Por ejemplo, 2 L por cilindro" class="bg-card" />
+                        </hlm-field>
+                      }
+                      @case ('IRRIGATION') {
+                        <hlm-field>
+                          <label hlmFieldLabel for="log-humidity">Humedad</label>
+                          <input hlmInput id="log-humidity" formControlName="humidity" class="bg-card" />
+                        </hlm-field>
+                      }
+                      @case ('PEST_CHECK') {
+                        <hlm-field>
+                          <label hlmFieldLabel for="log-result">Resultado de la revisión</label>
+                          <input hlmInput id="log-result" formControlName="result" placeholder="Por ejemplo, sin plagas" class="bg-card" />
+                        </hlm-field>
+                        <hlm-field>
+                          <label hlmFieldLabel for="log-chemical">¿Se aplicó químico?</label>
+                          <hlm-select formControlName="chemicalApplied" [itemToString]="yesNoLabel">
+                            <hlm-select-trigger buttonId="log-chemical" class="w-full bg-card">
+                              <hlm-select-value placeholder="Sin indicar" />
+                            </hlm-select-trigger>
+                            <hlm-select-content *hlmSelectPortal>
+                              <hlm-select-item value="yes">Sí</hlm-select-item>
+                              <hlm-select-item value="no">No</hlm-select-item>
+                            </hlm-select-content>
+                          </hlm-select>
+                        </hlm-field>
+                      }
+                      @case ('FERTILIZER_EVAL') {
+                        <hlm-field>
+                          <label hlmFieldLabel for="log-fertilizer">Resultado</label>
+                          <hlm-select formControlName="fertilizerResult" [itemToString]="fertilizerLabel">
+                            <hlm-select-trigger buttonId="log-fertilizer" class="w-full bg-card">
+                              <hlm-select-value placeholder="Sin indicar" />
+                            </hlm-select-trigger>
+                            <hlm-select-content *hlmSelectPortal>
+                              @for (option of fertilizerResults; track option[0]) {
+                                <hlm-select-item [value]="option[0]">{{ option[1] }}</hlm-select-item>
+                              }
+                            </hlm-select-content>
+                          </hlm-select>
+                        </hlm-field>
+                      }
+                    }
+                  </hlm-field-group>
+                </div>
+              }
+
+              <hlm-field>
+                <label hlmFieldLabel for="log-notes">Notas</label>
+                <textarea hlmTextarea id="log-notes" formControlName="notes" rows="3"></textarea>
+              </hlm-field>
+            </hlm-field-group>
+          </div>
+
+          <div hlmCardFooter class="mt-6 flex flex-col-reverse gap-2 border-t pt-6 sm:flex-row sm:justify-end">
+            <a hlmBtn variant="ghost" [routerLink]="['/lots', id()]" class="h-11 w-full text-base sm:w-auto">Cancelar</a>
+            <button hlmBtn type="submit" class="h-11 w-full text-base sm:w-auto sm:px-6" [disabled]="saving()">
+              @if (saving()) {
+                <hlm-spinner aria-label="Guardando" />
+              }
+              Guardar registro
+            </button>
+          </div>
+        </form>
+      } @else {
+        <div hlmCardContent>
+          <p class="text-muted-foreground">Este lote aún no tiene ciclo. Inicia uno desde la vista del lote para registrar acciones.</p>
+        </div>
+        <div hlmCardFooter>
+          <a hlmBtn [routerLink]="['/lots', id()]">Ir al lote</a>
+        </div>
+      }
+    </section>
+  }
+</div>
