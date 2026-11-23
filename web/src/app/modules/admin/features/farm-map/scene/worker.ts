@@ -1,6 +1,14 @@
 import * as THREE from 'three';
 import type { PropKind, WorkerAction } from '../worker-actions';
-import { random, SOIL_HEIGHT } from './beds';
+import {
+  COVER_EXTRA,
+  RIDGE_HEIGHT,
+  RIDGE_WIDTH,
+  random,
+  ridgeLength,
+  ridgeXs,
+  SOIL_HEIGHT,
+} from './beds';
 import { COLORS, type SceneAssets } from './materials';
 
 /** Limb lengths (metres): about a 1.65 m worker. */
@@ -26,7 +34,7 @@ interface Limb {
 type Slot = 'handR' | 'handL' | 'back' | 'shoulderL' | 'front' | 'ground';
 
 const PROP_SLOT: Record<PropKind, Slot> = {
-  'mulch-roll': 'handL',
+  'mush-roll': 'handL',
   'tape-coil': 'handL',
   'dry-plant': 'handR',
   machete: 'handR',
@@ -35,7 +43,7 @@ const PROP_SLOT: Record<PropKind, Slot> = {
   broza: 'ground',
   sack: 'shoulderL',
   'tape-spool': 'front',
-  'mulch-spool': 'front',
+  'mush-spool': 'front',
   sprayer: 'back',
   hose: 'handR',
   jug: 'ground',
@@ -64,6 +72,8 @@ export class Worker {
   private readonly legs: [Limb, Limb];
   private readonly slots: Record<Slot, THREE.Group>;
   private readonly trail: THREE.Mesh | null = null;
+  /** Plastic still on the first ridge, shortened as the worker pulls it off. */
+  private readonly peel: { mesh: THREE.Mesh; length: number } | null = null;
   private readonly halfLength: number;
   private readonly offset: number;
 
@@ -82,7 +92,7 @@ export class Worker {
       this.figure.position.x = -bed.width / 2 - 0.4;
     } else {
       // Walks on the soil, between the first two ridges.
-      this.root.position.y = SOIL_HEIGHT;
+      this.figure.position.y = SOIL_HEIGHT;
       this.figure.position.x = ridges > 1 ? -bed.width / 2 + bed.width / ridges : -bed.width / 4;
     }
 
@@ -140,10 +150,28 @@ export class Worker {
     ground.position.set(0.45, 0, 0);
 
     if (action.trail) {
-      this.trail = this.mesh(this.box(), this.material(action.trail.color), [0, 0.01, 0]);
+      this.trail = this.mesh(this.box(), this.material(action.trail.color), [
+        0,
+        this.figure.position.y + 0.01,
+        0,
+      ]);
       this.trail.castShadow = false;
       this.trail.scale.set(action.trail.width, 0.02, 0.01);
       this.root.add(this.trail);
+    }
+
+    const peelColor = action.bed?.peel;
+    if (peelColor !== undefined) {
+      // Same size as the plastic on the other ridges, slightly taller so it
+      // hides the bare ridge under it.
+      const mesh = this.mesh(this.box(), this.material(peelColor, { roughness: 0.45 }), [
+        ridgeXs(bed.width)[0],
+        this.figure.position.y + RIDGE_HEIGHT / 2 + 0.005,
+        0,
+      ]);
+      mesh.scale.set(RIDGE_WIDTH + COVER_EXTRA + 0.01, RIDGE_HEIGHT + 0.01, 1);
+      this.root.add(mesh);
+      this.peel = { mesh, length: ridgeLength(bed.depth) };
     }
 
     this.root.traverse((object) => {
@@ -195,7 +223,7 @@ export class Worker {
   // Motions -------------------------------------------------------------
 
   private pick(t: number): void {
-    const distance = this.walkTo(t * 0.22);
+    const distance = this.peel ? this.peelTo(t * 0.22, this.peel) : this.walkTo(t * 0.22);
     this.walkLegs(distance, 0.25);
     this.squat(0.55, 0.95);
     this.torso.rotation.x = 1.0;
@@ -249,7 +277,11 @@ export class Worker {
     if (this.trail) {
       const length = Math.abs(z - from);
       this.trail.scale.z = Math.max(0.01, length);
-      this.trail.position.set(this.figure.position.x, 0.01, (z + from) / 2);
+      this.trail.position.set(
+        this.figure.position.x,
+        this.figure.position.y + 0.01,
+        (z + from) / 2,
+      );
     }
   }
 
@@ -337,6 +369,22 @@ export class Worker {
     const { z, dir } = this.path(distance);
     this.figure.position.z = z;
     this.figure.rotation.y = dir > 0 ? 0 : Math.PI;
+    return distance;
+  }
+
+  /**
+   * One way along the ridge, pulling the plastic off just ahead of the hands;
+   * at the end it starts over on a covered ridge.
+   */
+  private peelTo(distance: number, peel: { mesh: THREE.Mesh; length: number }): number {
+    const reach = 0.3;
+    const along = distance % peel.length;
+    const edge = -peel.length / 2 + along;
+    this.figure.position.z = edge - reach;
+    this.figure.rotation.y = 0;
+    const left = peel.length - along;
+    peel.mesh.scale.z = Math.max(0.001, left);
+    peel.mesh.position.z = edge + left / 2;
     return distance;
   }
 
@@ -448,7 +496,7 @@ export class Worker {
     };
     const cyl = this.cylinder(1, 1, 1);
     switch (kind) {
-      case 'mulch-roll':
+      case 'mush-roll':
         add(
           cyl,
           this.material(COLORS.plasticScrap),
@@ -505,8 +553,8 @@ export class Worker {
         add(cyl, this.material(COLORS.tape), [0, 0, 0], [0.14, 0.12, 0.14], [0, 0, Math.PI / 2]);
         add(cyl, wood, [0, 0, 0], [0.02, 0.4, 0.02], [0, 0, Math.PI / 2]);
         break;
-      case 'mulch-spool':
-        add(cyl, this.material(COLORS.mulch), [0, 0, 0], [0.12, 0.7, 0.12], [0, 0, Math.PI / 2]);
+      case 'mush-spool':
+        add(cyl, this.material(COLORS.mush), [0, 0, 0], [0.12, 0.7, 0.12], [0, 0, Math.PI / 2]);
         break;
       case 'sprayer':
         add(cyl, tint, [0, 0, -0.04], [0.15, 0.48, 0.12]);

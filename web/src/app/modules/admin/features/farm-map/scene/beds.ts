@@ -3,8 +3,10 @@ import { COLORS, type SceneAssets } from './materials';
 
 /** Ridges are about a metre apart: 3 in a schematic bed, more in wider fields. */
 const RIDGE_SPACING = 1;
-const RIDGE_WIDTH = 0.6;
-const RIDGE_HEIGHT = 0.22;
+export const RIDGE_WIDTH = 0.6;
+export const RIDGE_HEIGHT = 0.22;
+/** Extra width of the plastic over a ridge. */
+export const COVER_EXTRA = 0.06;
 export const SOIL_HEIGHT = 0.12;
 const PLANT_SPACING = 0.45;
 
@@ -68,8 +70,10 @@ function box(
   return mesh;
 }
 
+export const ridgeLength = (depth: number) => depth - 0.5;
+
 /** x of each ridge centre inside a bed of the given width. */
-function ridgeXs(width: number): number[] {
+export function ridgeXs(width: number): number[] {
   const ridges = Math.max(1, Math.round(width / RIDGE_SPACING));
   const step = width / ridges;
   return Array.from({ length: ridges }, (_, i) => -width / 2 + step / 2 + i * step);
@@ -91,6 +95,8 @@ export interface BedOptions {
   /** Phase order 1–8, or null for bare soil. */
   phase: number | null;
   seed: number;
+  /** Leave the first ridge uncovered: a worker draws its plastic instead. */
+  bareFirstRidge?: boolean;
 }
 
 /**
@@ -107,7 +113,7 @@ export function buildBed(
   const group = new THREE.Group();
   const top = SOIL_HEIGHT;
   const ridgeTop = top + RIDGE_HEIGHT;
-  const ridgeLength = depth - 0.5;
+  const length = ridgeLength(depth);
   let height = ridgeTop;
 
   const soilColor =
@@ -116,7 +122,7 @@ export function buildBed(
 
   if (!phase) return { group, height };
 
-  // 1. Clearing: bare soil with leftover mulch scraps and drip tape.
+  // 1. Clearing: bare soil with leftover mush scraps and drip tape.
   if (phase === 1) {
     const scrap = assets.geometry('scrap', () => new THREE.BoxGeometry(1, 0.02, 1));
     const scraps: Placement[] = Array.from({ length: 14 }, () => ({
@@ -140,14 +146,14 @@ export function buildBed(
     return { group, height: top + 0.05 };
   }
 
-  // 2+. Ridges: bare soil (2), then covered with mulch (3 onwards).
-  const covered = phase >= 3;
-  for (const x of ridgeXs(width)) {
+  // 2+. Ridges: bare soil (2), then covered with mush (3 onwards).
+  for (const [i, x] of ridgeXs(width).entries()) {
+    const covered = phase >= 3 && !(i === 0 && options.bareFirstRidge);
     group.add(
       box(
         assets,
-        [RIDGE_WIDTH + (covered ? 0.06 : 0), RIDGE_HEIGHT, ridgeLength],
-        covered ? COLORS.mulch : COLORS.soil,
+        [RIDGE_WIDTH + (covered ? COVER_EXTRA : 0), RIDGE_HEIGHT, length],
+        covered ? COLORS.mush : COLORS.soil,
         [x, top + RIDGE_HEIGHT / 2, 0],
         covered ? { roughness: 0.45 } : {},
       ),
@@ -171,7 +177,7 @@ export function buildBed(
     instanced(
       tape,
       assets.material(COLORS.tape, { roughness: 0.6 }),
-      ridgeXs(width).map((x) => ({ x: x + 0.12, y: ridgeTop + 0.02, z: 0, sz: ridgeLength })),
+      ridgeXs(width).map((x) => ({ x: x + 0.12, y: ridgeTop + 0.02, z: 0, sz: length })),
     ),
   );
 
@@ -324,7 +330,7 @@ export function buildBed(
     instanced(
       wire,
       assets.material(COLORS.frame, { metalness: 0.4, roughness: 0.5 }),
-      ridgeXs(width).map((x) => ({ x, y: wireHeight, z: 0, sz: ridgeLength })),
+      ridgeXs(width).map((x) => ({ x, y: wireHeight, z: 0, sz: length })),
     ),
   );
   const strings = instanced(

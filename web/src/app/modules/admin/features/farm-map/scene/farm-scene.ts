@@ -159,12 +159,15 @@ export class FarmScene {
 
       for (const { lot, x, z, width, depth } of gh.beds) {
         const state = activity.get(lot.id) ?? 'idle';
-        const phase = lot.cycle?.phase?.order ?? null;
+        const action = state === 'today' ? workerActionFor(lot.cycle?.lastLog?.code) : null;
+        // While someone works on it, the bed shows what that work needs.
+        const phase = action?.bed?.phase ?? lot.cycle?.phase?.order ?? null;
         const { group } = buildBed(this.assets, {
           width,
           depth,
           phase,
           seed: lot.number * 7919 + gh.name.length,
+          bareFirstRidge: action?.bed?.peel !== undefined,
         });
         group.position.set(x, 0, z);
         this.content.add(group);
@@ -180,7 +183,6 @@ export class FarmScene {
         this.hitBoxes.push(hit);
         this.content.add(hit);
 
-        const action = state === 'today' ? workerActionFor(lot.cycle?.lastLog?.code) : null;
         if (action) {
           const worker = new Worker(
             this.assets,

@@ -33,7 +33,7 @@ export type Motion =
   | 'inspect';
 
 export type PropKind =
-  | 'mulch-roll'
+  | 'mush-roll'
   | 'tape-coil'
   | 'dry-plant'
   | 'machete'
@@ -42,7 +42,7 @@ export type PropKind =
   | 'broza'
   | 'sack'
   | 'tape-spool'
-  | 'mulch-spool'
+  | 'mush-spool'
   | 'sprayer'
   | 'hose'
   | 'jug'
@@ -64,6 +64,12 @@ export interface WorkerAction {
   tint?: number;
   /** Strip left behind on the bed while laying (colour and width). */
   trail?: { color: number; width: number };
+  /**
+   * How the bed looks while the worker is on it, when the cycle's phase says
+   * otherwise: drawn as `phase`, with `peel` the colour of a covering the
+   * worker takes off the first ridge as it walks.
+   */
+  bed?: { phase: number; peel?: number };
 }
 
 const PRODUCT = {
@@ -77,7 +83,12 @@ const PRODUCT = {
 
 export const WORKER_ACTIONS: Readonly<Record<string, WorkerAction>> = {
   // 1. Limpieza del campo
-  'recoger-mulch': { motion: 'pick', props: ['mulch-roll'] },
+  // The ridges still have their plastic; the worker pulls it off one of them.
+  'recoger-mush': {
+    motion: 'pick',
+    props: ['mush-roll'],
+    bed: { phase: 3, peel: 0x23211f },
+  },
   'recoger-cintas': { motion: 'pick', props: ['tape-coil'] },
   // 2. Preparación del suelo
   'poner-guano': { motion: 'sack', props: ['sack'] },
@@ -90,9 +101,9 @@ export const WORKER_ACTIONS: Readonly<Record<string, WorkerAction>> = {
     props: ['tape-spool'],
     trail: { color: 0x2b4f73, width: 0.06 },
   },
-  'colocar-mulch': {
+  'colocar-mush': {
     motion: 'lay',
-    props: ['mulch-spool'],
+    props: ['mush-spool'],
     trail: { color: 0x23211f, width: 0.7 },
   },
   'nematicida-instalacion': { motion: 'water', props: ['hose', 'jug'], tint: PRODUCT.nematicide },

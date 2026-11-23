@@ -61,10 +61,10 @@ Que los ingenieros registren desde el celular **lo que se hizo hoy en cada lote*
 
 | # | Fase | Acciones |
 |---|---|---|
-| 1 | Limpieza del campo | Recoger el plástico mulch · Recoger las cintas de riego por goteo |
+| 1 | Limpieza del campo | Recoger el plástico mush · Recoger las cintas de riego por goteo |
 | 2 | Preparación del suelo | Poner guano en líneas y camellones · Remover la tierra y mezclar el guano (pala, trinche, pico) · Hacer huecos en la línea e incorporar la broza · Tapar los huecos con 15 cm de tierra |
-| 3 | Instalación | Instalar la cinta de riego con goteros · Colocar el plástico mulch · Aplicar nematicida por riego |
-| 4 | Descomposición | Regar con agua interdiario (10 a 15 días) |
+| 3 | Instalación | Instalar la cinta de riego con goteros · Colocar el plástico mush · Aplicar nematicida por riego |
+| 4 | Descomposición | Regar interdiario para descomponer el guano y la broza (10 a 15 días) |
 | 5 | Plantines | Recibir los plantines · Trasplantar (en la primera hoja) · Aplicar fungicida y enraizante (3 a 4 días después del trasplante) · Aplicar la segunda fertilización (con las hojas verdaderas, 2 veces por semana) |
 | 6 | Crecimiento | Iniciar el tutorado (con la 5.ª hoja, unos 20 días después) · Limpiar la planta (diario o interdiario) |
 | 7 | Producción | Aplicar fertilizante de producción (3 veces por semana) · Evaluar fertilizantes (a los 35 días) · Iniciar la cosecha · Controlar desperfectos con los controles de seguridad |
@@ -185,8 +185,8 @@ Página `/admin/map` (pestaña "Vista 3D"), solo para el admin, hecha con three.
   | Sin ciclo o sin registros de fase | Tierra lisa |
   | 1. Limpieza del campo | Tierra con restos de plástico y cintas |
   | 2. Preparación del suelo | Camellones con montículos de guano |
-  | 3. Instalación | Camellones cubiertos con mulch y cinta de riego |
-  | 4. Descomposición | Mulch con tierra húmeda y oscura alrededor |
+  | 3. Instalación | Camellones cubiertos con mush y cinta de riego |
+  | 4. Descomposición | Mush con tierra húmeda y oscura alrededor |
   | 5. Plantines | Plantas pequeñas en línea |
   | 6. Crecimiento | Plantas altas con hilos de tutorado |
   | 7. Producción | Plantas altas con pepinos |
@@ -197,7 +197,7 @@ Página `/admin/map` (pestaña "Vista 3D"), solo para el admin, hecha con three.
   - Un lote con 3 días o más sin registros no se tapa (la capa blanca confundía). Solo cambia su etiqueta: gris con borde punteado, un reloj y los días ("7 d").
   - La tarjeta y la lista dicen los días exactos ("7 días sin registros").
 - **Trabajador animado** en cada lote con un registro de hoy, haciendo la acción de su último registro:
-  - **Relación acción → animación:** cada acción tiene un código estable, la columna `Action.code`. Es texto único y opcional, y no cambia aunque la acción se renombre. El id no sirve porque es distinto en cada base de datos. El nombre tampoco, porque se renombra y hay nombres repetidos ("Aplicar nematicida por riego" está en las fases 3 y 8). El seed asigna los códigos de las acciones actuales (`recoger-mulch`, `hacer-huecos`, `nematicida-cierre`, …), y `GET /lots` devuelve el código del último registro.
+  - **Relación acción → animación:** cada acción tiene un código estable, la columna `Action.code`. Es texto único y opcional, y no cambia aunque la acción se renombre. El id no sirve porque es distinto en cada base de datos. El nombre tampoco, porque se renombra y hay nombres repetidos ("Aplicar nematicida por riego" está en las fases 3 y 8). El seed asigna los códigos de las acciones actuales (`recoger-mush`, `hacer-huecos`, `nematicida-cierre`, …), y `GET /lots` devuelve el código del último registro.
   - **Catálogo (`worker-actions.ts`):** cada código apunta a un movimiento base más una variante (los objetos que lleva, el estilo y el color del producto), así que cada acción se ve distinta. Hay 11 movimientos base:
     - recoger
     - lampa: dar vuelta la tierra, cavar con la broza al lado, o empujar tierra
@@ -303,3 +303,4 @@ Resultado: **una consulta a Supabase por usuario y por token**, es decir, aproxi
 - ~~Nombres de las variedades~~: las variedades pasan a la etapa 2.
 - ~~Lista de cultivos~~: los cultivos pasan a la etapa 2.
 - ~~Tipo de detalle de cada acción~~: confirmado (§8), con todos los campos opcionales.
+- **Por decidir: ¿juntar "Recibir los plantines" y "Trasplantar"?** (fase 5, §6). Mantenerlas separadas solo sirve si entre la llegada de los plantines y el trasplante pasan días y se quiere medir ese tiempo. Si se trasplantan el mismo día que llegan, es mejor una sola acción, por ejemplo "Recibir y trasplantar los plantines". En ese caso hay que actualizar el seed y `worker-actions.ts`, porque los códigos `recibir-plantines` y `trasplantar` tienen animaciones distintas.

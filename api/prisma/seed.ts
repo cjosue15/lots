@@ -22,7 +22,7 @@ const PHASES: [name: string, actions: ActionSeed[]][] = [
   [
     'Limpieza del campo',
     [
-      ['recoger-mulch', 'Recoger el plástico mulch', NONE],
+      ['recoger-mush', 'Recoger el plástico mush', NONE],
       ['recoger-cintas', 'Recoger las cintas de riego por goteo', NONE],
     ],
   ],
@@ -39,13 +39,13 @@ const PHASES: [name: string, actions: ActionSeed[]][] = [
     'Instalación',
     [
       ['instalar-cinta', 'Instalar la cinta de riego con goteros', NONE],
-      ['colocar-mulch', 'Colocar el plástico mulch', NONE],
+      ['colocar-mush', 'Colocar el plástico mush', NONE],
       ['nematicida-instalacion', 'Aplicar nematicida por riego', APPLICATION],
     ],
   ],
   [
     'Descomposición',
-    [['regar-interdiario', 'Regar con agua interdiario', IRRIGATION]],
+    [['regar-interdiario', 'Regar interdiario para descomponer el guano y la broza', IRRIGATION]],
   ],
   [
     'Plantines',
@@ -114,6 +114,8 @@ async function ensureAction(
   [code, name, detailType]: ActionSeed,
   order: number,
 ) {
+  // By code first, so actions renamed later are not created again.
+  if (await prisma.action.findUnique({ where: { code } })) return;
   const existing = await prisma.action.findFirst({ where: { phaseId, name } });
   if (existing) {
     await prisma.action.update({ where: { id: existing.id }, data: { code } });

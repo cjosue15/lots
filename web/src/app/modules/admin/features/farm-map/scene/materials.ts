@@ -8,7 +8,7 @@ export const COLORS = {
   soilDark: 0x5e432c,
   soilWet: 0x3f2f23,
   guano: 0x5a4128,
-  mulch: 0x23211f,
+  mush: 0x23211f,
   tape: 0x2b4f73,
   plasticScrap: 0x3a3836,
   stem: 0x4d7a35,
