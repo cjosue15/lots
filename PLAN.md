@@ -161,7 +161,7 @@ Greenhouse ──< Lot ──< Cycle ──< ActionLog ──< ActionLogChange
 | Detalle del registro | Celular y web | Datos e historial de cambios |
 | Administración | Web (solo admin) | Fases y acciones de la plantilla, lotes |
 
-- **Acciones generales de hoy:** las acciones sin fase (generales y "Otra acción" sin fase) no cambian la fase (§7). Si hay alguna registrada hoy, la vista general, la vista del lote y el recuadro de la vista 3D la muestran bajo la fase ("Hoy: Riego y control de humedad"). El recuadro 3D muestra las 3 más recientes, en lista. Al día siguiente deja de mostrarse. El "Último" de la vista general y del recuadro 3D es la última acción con fase, así que no repite la acción general.
+- **Acciones generales de hoy:** las acciones sin fase (generales y "Otra acción" sin fase) no cambian la fase (§7). Si hay alguna registrada hoy, la vista general, la vista del lote y el recuadro de la vista 3D la muestran bajo la fase ("Hoy: Riego y control de humedad"). Las tres muestran las 3 más recientes, en lista, y "+N más" si hay más. Al día siguiente deja de mostrarse. El "Último" de la vista general y del recuadro 3D es la última acción con fase, así que no repite la acción general.
 
 ### Administración (etapa 1)
 
@@ -206,7 +206,7 @@ Página `/admin/map` (pestaña "Vista 3D"), solo para el admin, hecha con three.
     - echar guano
     - tender: deja la cinta o el plástico en el lote
     - fumigar: mochila del color del producto, con lanza, manguera y rocío que sale de la boquilla
-    - regar por la cinta: abre la válvula y gotean todos los goteros; con bidón rojo en el nematicida por riego. En "Riego y control de humedad" (general) gotea la cinta mientras el trabajador anota en una libreta
+    - regar por la cinta: abre la válvula y gotean todos los goteros; con bidón rojo en el nematicida por riego. En "Riego y control de humedad" (general) gotea la cinta mientras el trabajador anota en una libreta. En las fases 1 y 2 (o sin registros) todavía no hay cinta, así que no se dibujan gotas y solo se ve al trabajador anotando
     - trasplantar
     - cargar
     - tutorar o limpiar
@@ -226,7 +226,6 @@ Página `/admin/map` (pestaña "Vista 3D"), solo para el admin, hecha con three.
     - `recibir-plantines` (`carry`): el trabajador lleva una caja blanca con plantines; el lote se dibuja como en la fase 4, sin nada plantado.
     - `trasplantar` (`plant-seedlings`): las otras filas ya tienen sus plantines; el trabajador, arrodillado con la caja en el suelo, planta la primera uno por uno. El plantín es un cubo de sustrato con dos tallos y hojas anchas (`scene/seedling.ts`).
     - `fungicida-enraizante` (`drench-seedlings`): las otras filas ya tienen una mancha húmeda de producto en la base de cada plantín. En la primera el trabajador, con la mochila y desde el borde del lote, se detiene en cada plantín, apunta la lanza a su base y la rocía hasta que se moja el plástico alrededor.
-    - `fungicida-enraizante` (`drip`): por ahora igual que el nematicida, sobre el lote con plantines (fase 5). Falta confirmar cómo se aplica en el campo.
     - `iniciar-tutorado` (`tie-plants`): pitas ya colgadas del alambre; las otras filas tienen sus plantas jóvenes paradas en su pita. En la primera las plantas están echadas sobre el plástico y el trabajador, de cara a la fila, se agacha en cada una, la levanta y la amarra arriba. El lote se dibuja como en la fase 6.
     - `limpiar-planta` (`prune-leaves`): plantas en crecimiento; en las otras filas ya están limpias, con el tallo pelado abajo y sus hojas viejas (amarillentas) tiradas sobre el plástico. En la primera el trabajador, agachado de cara a la fila, corta con tijera las 3 hojas viejas de cada planta, que caen al plástico, y pasa a la siguiente.
     - `fertilizante-produccion` (`drip`): igual que el nematicida, con gotas blancas, entre las plantas que empiezan a producir (fase 7, con flores y todavía sin pepinos).
