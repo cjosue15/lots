@@ -60,6 +60,8 @@ describe('activityOf', () => {
     days: 0,
     phase: null,
     lastLog: lastLog ? { name: 'Riego', date: lastLog, code: null } : null,
+    todayGeneral: [],
+    lastPhaseLog: null,
   });
 
   it('classifies lots by their last log', () => {

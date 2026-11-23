@@ -39,10 +39,15 @@
                 @if (lot.cycle; as cycle) {
                   <span class="block font-medium">{{ cycle.phase?.name ?? 'Sin registros' }}</span>
                   <app-phase-bar class="mt-1.5" [order]="cycle.phase?.order ?? null" />
+                  @if (cycle.todayGeneral.length) {
+                    <span class="mt-1.5 block truncate text-sm font-medium">
+                      Hoy: {{ cycle.todayGeneral.join(', ') }}
+                    </span>
+                  }
                   <span class="mt-1.5 block text-sm text-muted-foreground tabular-nums">
                     Ciclo {{ cycle.number }}, día {{ cycle.days }}
                   </span>
-                  @if (cycle.lastLog; as last) {
+                  @if (cycle.lastPhaseLog; as last) {
                     <span class="block truncate text-sm text-muted-foreground">
                       Último: {{ last.name }}, {{ relativeDay(last.date).toLowerCase() }}
                     </span>

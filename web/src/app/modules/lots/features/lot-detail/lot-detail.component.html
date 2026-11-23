@@ -41,6 +41,9 @@
         }
       </p>
       <app-phase-bar class="mt-2" [order]="cycle.phase?.order ?? null" />
+      @if (cycle.todayGeneral.length) {
+        <p class="mt-2 text-sm font-medium">Hoy: {{ cycle.todayGeneral.join(', ') }}</p>
+      }
 
       <div class="mt-5 flex flex-col gap-2 sm:flex-row">
         <a hlmBtn [routerLink]="['/lots', lot.id, 'log']" class="h-11 text-base sm:px-5">

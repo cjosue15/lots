@@ -30,6 +30,13 @@ export interface CycleSummary {
   phase: PhaseRef | null;
   /** `code` is the action's 3D key (null for actions without one). */
   lastLog: { name: string; date: string; code: string | null } | null;
+  /**
+   * Names of today's logs without a phase (general actions and "Otra acción"
+   * without one), so they can be shown next to the phase on that day only.
+   */
+  todayGeneral: string[];
+  /** Last log with a phase: what the overview shows as "Último". */
+  lastPhaseLog: { name: string; date: string } | null;
 }
 
 export interface LotSummary {
@@ -252,6 +259,7 @@ export class LotsService {
   private toSummary(lot: LotWithActiveCycle, today: string): LotSummary {
     const cycle = lot.cycles[0];
     const last = cycle?.actionLogs[0];
+    const lastPhase = cycle?.actionLogs.find((log) => log.phase);
     return {
       id: lot.id,
       number: lot.number,
@@ -270,6 +278,16 @@ export class LotsService {
                   code: last.action?.code ?? null,
                 }
               : null,
+            lastPhaseLog: lastPhase
+              ? { name: lastPhase.name, date: fromDbDate(lastPhase.date) }
+              : null,
+            todayGeneral: [
+              ...new Set(
+                cycle.actionLogs
+                  .filter((log) => !log.phase && fromDbDate(log.date) === today)
+                  .map((log) => log.name),
+              ),
+            ],
           }
         : null,
     };

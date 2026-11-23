@@ -14,6 +14,10 @@ export interface CycleSummary {
   phase: PhaseRef | null;
   /** `code`: the action's key for the 3D view (null when it has none). */
   lastLog: { name: string; date: string; code: string | null } | null;
+  /** Today's logs without a phase (general actions), shown on that day only. */
+  todayGeneral: string[];
+  /** Last log with a phase: shown as "Último" in the overview. */
+  lastPhaseLog: { name: string; date: string } | null;
 }
 
 export interface LotSummary {
