@@ -196,7 +196,7 @@ Página `/admin/map` (pestaña "Vista 3D"), solo para el admin, hecha con three.
   - Un lote con registros hoy lleva un marco dorado y su número en dorado.
   - Un lote con 3 días o más sin registros no se tapa (la capa blanca confundía). Solo cambia su etiqueta: gris con borde punteado, un reloj y los días ("7 d").
   - La tarjeta y la lista dicen los días exactos ("7 días sin registros").
-- **Trabajador animado** en cada lote con un registro de hoy, haciendo la acción de su último registro:
+- **Trabajador animado** en cada lote con un ciclo activo, haciendo la acción de su último registro. Sigue así hasta que se registre otra acción, aunque el registro sea de días atrás; el marco y la etiqueta del lote siguen indicando si hubo registros hoy:
   - **Relación acción → animación:** cada acción tiene un código estable, la columna `Action.code`. Es texto único y opcional, y no cambia aunque la acción se renombre. El id no sirve porque es distinto en cada base de datos. El nombre tampoco, porque se renombra y hay nombres repetidos ("Aplicar nematicida por riego" está en las fases 3 y 8). El seed asigna los códigos de las acciones actuales (`recoger-mush`, `hacer-huecos`, `nematicida-cierre`, …), y `GET /lots` devuelve el código del último registro.
   - **Catálogo (`worker-actions.ts`):** cada código apunta a un movimiento base más una variante (los objetos que lleva, el estilo y el color del producto), así que cada acción se ve distinta. Hay 11 movimientos base:
     - recoger
@@ -211,7 +211,7 @@ Página `/admin/map` (pestaña "Vista 3D"), solo para el admin, hecha con three.
     - cosechar
     - revisar
   - **Trabajador (`scene/worker.ts`):** low-poly, hecho con formas simples, con sombrero y camisas de colores variados. Camina por el surco entre las dos primeras líneas. En las fases 6 a 8 trabaja desde el pasillo junto al lote, porque las plantas altas lo taparían.
-  - **El lote cambia con el trabajo (`ridge` en el catálogo):** en algunas acciones, mientras está el trabajador, el lote no se dibuja según su fase sino según la tarea. Las otras filas se ven con la tarea ya hecha, y la primera cambia a medida que el trabajador avanza. Al llegar al final, la animación empieza de nuevo. Fuera del día del registro, el lote vuelve a dibujarse según su fase. Hoy aplica a:
+  - **El lote cambia con el trabajo (`ridge` en el catálogo):** en algunas acciones, mientras está el trabajador, el lote no se dibuja según su fase sino según la tarea. Las otras filas se ven con la tarea ya hecha, y la primera cambia a medida que el trabajador avanza. Al llegar al final, la animación empieza de nuevo. Hoy aplica a:
     - `recoger-mush` (`pull-plastic`): camellones con plástico y cinta; el plástico desaparece delante del trabajador.
     - `recoger-cintas` (`pull-tape`): tierra con cinta; la cinta desaparece delante del trabajador.
     - `poner-guano` (`drop-guano`): montones de guano en el centro de la línea, que aparecen detrás del trabajador.

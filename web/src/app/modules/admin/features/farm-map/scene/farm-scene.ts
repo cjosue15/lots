@@ -159,7 +159,9 @@ export class FarmScene {
 
       for (const { lot, x, z, width, depth } of gh.beds) {
         const state = activity.get(lot.id) ?? 'idle';
-        const action = state === 'today' ? workerActionFor(lot.cycle?.lastLog?.code) : null;
+        // The last action logged keeps being shown until a newer one is logged,
+        // however long ago it was; the frame still tells how recent it is.
+        const action = workerActionFor(lot.cycle?.lastLog?.code);
         // While someone works on it, the bed shows what that work needs.
         const phase = action?.ridge
           ? (action.phase ?? 1)
