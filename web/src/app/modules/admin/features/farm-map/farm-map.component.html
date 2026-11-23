@@ -166,6 +166,9 @@
                   <li>{{ name }}</li>
                 }
               </ul>
+              @if (cycle.todayGeneral.length > 3) {
+                <p class="pl-5 text-muted-foreground">+{{ cycle.todayGeneral.length - 3 }} más</p>
+              }
             }
             <p class="text-muted-foreground tabular-nums">
               Ciclo {{ cycle.number }}, día {{ cycle.days }}

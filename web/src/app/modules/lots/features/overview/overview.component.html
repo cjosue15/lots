@@ -40,9 +40,18 @@
                   <span class="block font-medium">{{ cycle.phase?.name ?? 'Sin registros' }}</span>
                   <app-phase-bar class="mt-1.5" [order]="cycle.phase?.order ?? null" />
                   @if (cycle.todayGeneral.length) {
-                    <span class="mt-1.5 block truncate text-sm font-medium">
-                      Hoy: {{ cycle.todayGeneral.join(', ') }}
-                    </span>
+                    <!-- The 3 most recent general actions of today (newest first). -->
+                    <span class="mt-1.5 block text-sm font-medium">Hoy:</span>
+                    <ul class="list-disc pl-5 text-sm font-medium">
+                      @for (name of cycle.todayGeneral.slice(0, 3); track name) {
+                        <li>{{ name }}</li>
+                      }
+                    </ul>
+                    @if (cycle.todayGeneral.length > 3) {
+                      <span class="block pl-5 text-sm text-muted-foreground">
+                        +{{ cycle.todayGeneral.length - 3 }} más
+                      </span>
+                    }
                   }
                   <span class="mt-1.5 block text-sm text-muted-foreground tabular-nums">
                     Ciclo {{ cycle.number }}, día {{ cycle.days }}

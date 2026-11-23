@@ -42,7 +42,16 @@
       </p>
       <app-phase-bar class="mt-2" [order]="cycle.phase?.order ?? null" />
       @if (cycle.todayGeneral.length) {
-        <p class="mt-2 text-sm font-medium">Hoy: {{ cycle.todayGeneral.join(', ') }}</p>
+        <!-- The 3 most recent general actions of today (newest first). -->
+        <p class="mt-2 text-sm font-medium">Hoy:</p>
+        <ul class="list-disc pl-5 text-sm font-medium">
+          @for (name of cycle.todayGeneral.slice(0, 3); track name) {
+            <li>{{ name }}</li>
+          }
+        </ul>
+        @if (cycle.todayGeneral.length > 3) {
+          <p class="pl-5 text-sm text-muted-foreground">+{{ cycle.todayGeneral.length - 3 }} más</p>
+        }
       }
 
       <div class="mt-5 flex flex-col gap-2 sm:flex-row">
