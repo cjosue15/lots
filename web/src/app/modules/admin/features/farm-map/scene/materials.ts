@@ -8,13 +8,38 @@ export const COLORS = {
   soilDark: 0x5e432c,
   soilWet: 0x3f2f23,
   guano: 0x5a4128,
+  /** Soil with the guano turned in. */
+  soilMixed: 0x4a3524,
+  /** Open trench down a ridge. */
+  trench: 0x24180f,
   mush: 0x23211f,
   tape: 0x2b4f73,
+  /** Emitters (goteros) on the drip tape, and the main line feeding it. */
+  emitter: 0xf2c230,
+  mainLine: 0x222426,
+  valve: 0xc23b22,
+  drop: 0x8fd0f2,
+  wet: 0x4f8fb8,
+  /** Drops and wet patches of water mixed with a product: milky white. */
+  dropProduct: 0xeeeee6,
+  wetProduct: 0xb8b8ae,
   plasticScrap: 0x3a3836,
   stem: 0x4d7a35,
+  /** Cucumber vine and petioles: light, almost yellowish green. */
+  vine: 0x8fb862,
   leaf: 0x5f9a42,
   leafYoung: 0x7fb85a,
+  /** Old lower leaves, yellowing: the ones cut off when cleaning the plant. */
+  leafOld: 0xc2b64a,
+  /** Seedlings (plantines): light stems and seed leaves, substrate plug. */
+  seedlingStem: 0x9cc76e,
+  seedLeaf: 0xa9d47a,
+  substrate: 0x5a3d26,
+  /** Roots of a pulled-up plant. */
+  root: 0xa88a62,
   cucumber: 0x2f5a24,
+  /** Overripe cucumbers left on the dead plants, gone yellow. */
+  cucumberYellow: 0xd9b23a,
   flower: 0xe8c547,
   dried: 0xb39a62,
   driedDark: 0x8c7448,
@@ -37,6 +62,7 @@ export const COLORS = {
   sack: 0xc9b48a,
   hose: 0x3f7a3a,
   trayBlack: 0x2a2a28,
+  box: 0xf4f2ec,
   basket: 0xb08a52,
   today: 0xe0a526,
   hover: 0xffffff,

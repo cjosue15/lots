@@ -7,10 +7,10 @@ describe('workerActionFor', () => {
     expect(workerActionFor('no-existe')).toBeNull();
   });
 
-  it('gives every shovel action a style and every lay action a trail', () => {
+  it('gives every shovel action a style and every lay action something it leaves behind', () => {
     for (const action of Object.values(WORKER_ACTIONS)) {
       if (action.motion === 'shovel') expect(action.style).toBeDefined();
-      if (action.motion === 'lay') expect(action.trail).toBeDefined();
+      if (action.motion === 'lay') expect(action.ridge).toBeDefined();
     }
   });
 });

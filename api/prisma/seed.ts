@@ -45,7 +45,13 @@ const PHASES: [name: string, actions: ActionSeed[]][] = [
   ],
   [
     'Descomposición',
-    [['regar-interdiario', 'Regar interdiario para descomponer el guano y la broza', IRRIGATION]],
+    [
+      [
+        'regar-interdiario',
+        'Regar interdiario para descomponer el guano y la broza',
+        IRRIGATION,
+      ],
+    ],
   ],
   [
     'Plantines',
@@ -53,11 +59,6 @@ const PHASES: [name: string, actions: ActionSeed[]][] = [
       ['recibir-plantines', 'Recibir los plantines', NONE],
       ['trasplantar', 'Trasplantar', NONE],
       ['fungicida-enraizante', 'Aplicar fungicida y enraizante', APPLICATION],
-      [
-        'segunda-fertilizacion',
-        'Aplicar la segunda fertilización',
-        APPLICATION,
-      ],
     ],
   ],
   [
@@ -77,7 +78,6 @@ const PHASES: [name: string, actions: ActionSeed[]][] = [
       ],
       ['evaluar-fertilizantes', 'Evaluar fertilizantes', FERTILIZER_EVAL],
       ['cosecha', 'Iniciar la cosecha', NONE],
-      ['controlar-desperfectos', 'Controlar desperfectos', NONE],
     ],
   ],
   [
@@ -89,7 +89,7 @@ const PHASES: [name: string, actions: ActionSeed[]][] = [
       ['secar-planta', 'Dejar secar la planta', NONE],
       [
         'bajar-planta',
-        'Bajar la planta al suelo y retirar pepinillos amarillos',
+        'Retirar los pepinillos amarillos (fruto) y bajar la planta fuera del lote',
         NONE,
       ],
     ],

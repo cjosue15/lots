@@ -65,10 +65,10 @@ Que los ingenieros registren desde el celular **lo que se hizo hoy en cada lote*
 | 2 | Preparación del suelo | Poner guano en líneas y camellones · Remover la tierra y mezclar el guano (pala, trinche, pico) · Hacer huecos en la línea e incorporar la broza · Tapar los huecos con 15 cm de tierra |
 | 3 | Instalación | Instalar la cinta de riego con goteros · Colocar el plástico mush · Aplicar nematicida por riego |
 | 4 | Descomposición | Regar interdiario para descomponer el guano y la broza (10 a 15 días) |
-| 5 | Plantines | Recibir los plantines · Trasplantar (en la primera hoja) · Aplicar fungicida y enraizante (3 a 4 días después del trasplante) · Aplicar la segunda fertilización (con las hojas verdaderas, 2 veces por semana) |
+| 5 | Plantines | Recibir los plantines · Trasplantar (en la primera hoja) · Aplicar fungicida y enraizante (3 a 4 días después del trasplante) |
 | 6 | Crecimiento | Iniciar el tutorado (con la 5.ª hoja, unos 20 días después) · Limpiar la planta (diario o interdiario) |
-| 7 | Producción | Aplicar fertilizante de producción (3 veces por semana) · Evaluar fertilizantes (a los 35 días) · Iniciar la cosecha · Controlar desperfectos con los controles de seguridad |
-| 8 | Cierre del ciclo | Aplicar nematicida por riego (una sola inyección) · Arrancar la planta de raíz · Cortar la raíz y botarla · Dejar secar la planta (3 a 5 días) · Bajar la planta al suelo y retirar pepinillos amarillos |
+| 7 | Producción | Aplicar fertilizante de producción (3 veces por semana) · Evaluar fertilizantes (a los 35 días) · Iniciar la cosecha |
+| 8 | Cierre del ciclo | Aplicar nematicida por riego (una sola inyección) · Arrancar la planta de raíz · Cortar la raíz y botarla · Dejar secar la planta (3 a 5 días) · Retirar los pepinillos amarillos (fruto) y bajar la planta fuera del lote |
 
 ### Acciones generales (sin fase)
 
@@ -211,6 +211,30 @@ Página `/admin/map` (pestaña "Vista 3D"), solo para el admin, hecha con three.
     - cosechar
     - revisar
   - **Trabajador (`scene/worker.ts`):** low-poly, hecho con formas simples, con sombrero y camisas de colores variados. Camina por el surco entre las dos primeras líneas. En las fases 6 a 8 trabaja desde el pasillo junto al lote, porque las plantas altas lo taparían.
+  - **El lote cambia con el trabajo (`ridge` en el catálogo):** en algunas acciones, mientras está el trabajador, el lote no se dibuja según su fase sino según la tarea. Las otras filas se ven con la tarea ya hecha, y la primera cambia a medida que el trabajador avanza. Al llegar al final, la animación empieza de nuevo. Fuera del día del registro, el lote vuelve a dibujarse según su fase. Hoy aplica a:
+    - `recoger-mush` (`pull-plastic`): camellones con plástico y cinta; el plástico desaparece delante del trabajador.
+    - `recoger-cintas` (`pull-tape`): tierra con cinta; la cinta desaparece delante del trabajador.
+    - `poner-guano` (`drop-guano`): montones de guano en el centro de la línea, que aparecen detrás del trabajador.
+    - `remover-tierra` (`mix-guano`): el guano se mezcla con la pala y deja el camellón más oscuro.
+    - `hacer-huecos` (`fill-broza`): zanja al centro de cada línea, que se llena de broza.
+    - `tapar-huecos` (`cover-broza`): la broza se tapa con una capa de tierra (los 15 cm del campo).
+    - `instalar-cinta` (`lay-tape`): tierra con cinta; el trabajador camina de espaldas desenrollando la cinta de la primera fila.
+    - `nematicida-instalacion` y `nematicida-cierre` (`drip`, sin `ridge`): el trabajador está agachado al final de las líneas abriendo la válvula de la matriz, y de cada gotero de la cinta caen gotas. En instalación el lote se dibuja como en la fase 3; en cierre, con su fase.
+    - `regar-interdiario` (`drip`): igual, solo con agua y sin bidón; el lote se dibuja como en la fase 4.
+    - `recibir-plantines` (`carry`): el trabajador lleva una caja blanca con plantines; el lote se dibuja como en la fase 4, sin nada plantado.
+    - `trasplantar` (`plant-seedlings`): las otras filas ya tienen sus plantines; el trabajador, arrodillado con la caja en el suelo, planta la primera uno por uno. El plantín es un cubo de sustrato con dos tallos y hojas anchas (`scene/seedling.ts`).
+    - `fungicida-enraizante` (`drip`): por ahora igual que el nematicida, sobre el lote con plantines (fase 5). Falta confirmar cómo se aplica en el campo.
+    - `iniciar-tutorado` (`tie-plants`): pitas ya colgadas del alambre; las otras filas tienen sus plantas jóvenes paradas en su pita. En la primera las plantas están echadas sobre el plástico y el trabajador, de cara a la fila, se agacha en cada una, la levanta y la amarra arriba. El lote se dibuja como en la fase 6.
+    - `limpiar-planta` (`prune-leaves`): plantas en crecimiento; en las otras filas ya están limpias, con el tallo pelado abajo y sus hojas viejas (amarillentas) tiradas sobre el plástico. En la primera el trabajador, agachado de cara a la fila, corta con tijera las 3 hojas viejas de cada planta, que caen al plástico, y pasa a la siguiente.
+    - `fertilizante-produccion` (`drip`): igual que el nematicida, con gotas blancas, entre las plantas que empiezan a producir (fase 7, con flores y todavía sin pepinos).
+    - `evaluar-fertilizantes` (`note`): el trabajador recorre el pasillo planta por planta; en cada una se voltea, la mira de abajo arriba levantando una hoja y anota con lápiz en su tablilla.
+    - `cosecha` (`harvest-fruit`): plantas en producción; en las otras filas ya se cosechó y solo quedan pepinos chicos. En la primera el trabajador, de cara a la fila, alcanza cada pepino maduro, lo arranca y lo pone en la canasta, que se va llenando.
+    - `arrancar-planta` (`uproot`): las plantas muertas siguen colgadas de su pita; en las otras filas ya están arrancadas, con la raíz y el terrón al aire. En la primera el trabajador, parado en el borde del lote de cara a la fila, se agacha a cada planta y la jala de la base; la planta sube y queda colgada con la raíz afuera.
+    - `cortar-raiz` (`cut-root`): todas las plantas ya arrancadas y colgadas; en las otras filas sin raíz, y las raíces tiradas en el piso fuera del lote. En la primera el trabajador, agachado con el machete, corta la raíz de cada planta, la levanta y la tira por encima del hombro fuera del lote.
+    - `secar-planta` (`dry-plants`): todas las plantas arrancadas, sin raíz, colgadas de su pita; las raíces en el piso fuera del lote. Con el tiempo las plantas pasan de amarillo a marrón seco y van soltando hojas que caen al plástico (el ciclo se repite). El trabajador, desde el borde del lote, va planta por planta frotando una hoja para ver si ya secó.
+    - `bajar-planta` (`clear-plants`): en las otras filas solo quedan las pitas; sus plantas secas y los pepinillos amarillos están tirados en el piso fuera del lote. En la primera el trabajador, desde el borde, arranca cada pepinillo amarillo y lo tira fuera del lote; con la planta ya limpia la baja de su pita y la tira también afuera.
+  - Las plantas de pepino (`scene/plant.ts`) son una guía delgada que sube por la pita, con hojas anchas lobuladas en sus peciolos alrededor del tallo y flores amarillas; en producción son más altas, con más flores y pepinos. En el cierre (fase 8) son la misma planta muerta: guía café, hojas secas amarillas y cafés colgando arrugadas, unas todavía paradas e inclinadas y otras caídas sobre el camellón.
+    - `colocar-mush` (`lay-plastic`): camellones con cinta y plástico; la primera fila sin nada, donde el trabajador desenrolla el plástico caminando de espaldas.
   - **Acción nueva o editada:** el admin la crea o renombra en la plantilla. Luego, con Claude Code, se le asigna un código en la base y se agrega su entrada en el catálogo. Sin código (o con un código que no está en el catálogo) la acción no tiene trabajador.
 - **Interacción** (controles tipo mapa):
   - Arrastrar (o un dedo) desplaza la vista.
@@ -303,4 +327,5 @@ Resultado: **una consulta a Supabase por usuario y por token**, es decir, aproxi
 - ~~Nombres de las variedades~~: las variedades pasan a la etapa 2.
 - ~~Lista de cultivos~~: los cultivos pasan a la etapa 2.
 - ~~Tipo de detalle de cada acción~~: confirmado (§8), con todos los campos opcionales.
+- **Por confirmar: ¿cómo se aplica el fungicida y enraizante?** (fase 5). La vista 3D lo muestra por ahora como el nematicida, por la cinta de riego. Si se aplica con mochila u otra forma, cambiar su animación en `worker-actions.ts`.
 - **Por decidir: ¿juntar "Recibir los plantines" y "Trasplantar"?** (fase 5, §6). Mantenerlas separadas solo sirve si entre la llegada de los plantines y el trasplante pasan días y se quiere medir ese tiempo. Si se trasplantan el mismo día que llegan, es mejor una sola acción, por ejemplo "Recibir y trasplantar los plantines". En ese caso hay que actualizar el seed y `worker-actions.ts`, porque los códigos `recibir-plantines` y `trasplantar` tienen animaciones distintas.

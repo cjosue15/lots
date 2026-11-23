@@ -161,13 +161,16 @@ export class FarmScene {
         const state = activity.get(lot.id) ?? 'idle';
         const action = state === 'today' ? workerActionFor(lot.cycle?.lastLog?.code) : null;
         // While someone works on it, the bed shows what that work needs.
-        const phase = action?.bed?.phase ?? lot.cycle?.phase?.order ?? null;
+        const phase = action?.ridge
+          ? (action.phase ?? 1)
+          : (action?.phase ?? lot.cycle?.phase?.order ?? null);
         const { group } = buildBed(this.assets, {
           width,
           depth,
           phase,
           seed: lot.number * 7919 + gh.name.length,
-          bareFirstRidge: action?.bed?.peel !== undefined,
+          ridgeWork: action?.ridge,
+          fruit: !action?.noFruit,
         });
         group.position.set(x, 0, z);
         this.content.add(group);
