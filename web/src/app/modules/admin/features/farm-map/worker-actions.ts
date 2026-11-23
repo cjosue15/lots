@@ -8,6 +8,8 @@
  * To add an action: give it a code in the database and an entry here.
  */
 
+import type { CycleSummary } from '../../../lots/models/lot.model';
+
 export type Motion =
   /** Bent over, picking things up from the ground while walking. */
   | 'pick'
@@ -19,8 +21,6 @@ export type Motion =
   | 'lay'
   /** Backpack sprayer, sweeping the lance over the plants. */
   | 'spray'
-  /** Standing with a hose. */
-  | 'water'
   /** Kneeling, setting seedlings in the ridge one by one. */
   | 'kneel'
   /** Walking with something held in front. */
@@ -59,7 +59,6 @@ export type PropKind =
   | 'tape-spool'
   | 'mush-spool'
   | 'sprayer'
-  | 'hose'
   | 'jug'
   | 'clipboard'
   | 'pencil'
@@ -108,6 +107,8 @@ export interface WorkerAction {
  *   over a first ridge that has nothing yet.
  * - plant-seedlings: covered ridges with seedlings, planted one by one behind
  *   a kneeling worker on a first ridge that has none yet.
+ * - drench-seedlings: seedlings with a wet patch of product at their base; on
+ *   the first ridge the worker sprays each one with the backpack sprayer.
  * - tie-plants: young plants standing on their strings; on the first ridge
  *   they still sprawl on the plastic until the worker lifts each one up.
  * - prune-leaves: growing plants with their lower leaves cut off, lying on the
@@ -130,6 +131,7 @@ export type RidgeWork =
   | 'lay-tape'
   | 'lay-plastic'
   | 'plant-seedlings'
+  | 'drench-seedlings'
   | 'tie-plants'
   | 'prune-leaves'
   | 'harvest-fruit'
@@ -198,14 +200,13 @@ export const WORKER_ACTIONS: Readonly<Record<string, WorkerAction>> = {
     phase: 5,
     ridge: 'plant-seedlings',
   },
-  // Through the drip tape like the nematicide, over the new seedlings, until
-  // it is confirmed how it is applied in the field.
+  // With the backpack sprayer, aimed at the base of each new seedling.
   'fungicida-enraizante': {
-    motion: 'valve',
-    props: ['jug'],
+    motion: 'spray',
+    props: ['sprayer'],
     tint: PRODUCT.fungicide,
     phase: 5,
-    drip: true,
+    ridge: 'drench-seedlings',
   },
   // 6. Crecimiento
   'iniciar-tutorado': { motion: 'lift', props: [], phase: 6, ridge: 'tie-plants' },
@@ -239,10 +240,27 @@ export const WORKER_ACTIONS: Readonly<Record<string, WorkerAction>> = {
   'aplicar-quimico': { motion: 'spray', props: ['sprayer'], tint: PRODUCT.chemical },
   'fungicida-general': { motion: 'spray', props: ['sprayer'], tint: PRODUCT.fungicide },
   foliares: { motion: 'spray', props: ['sprayer'], tint: PRODUCT.foliar },
-  'riego-humedad': { motion: 'water', props: ['hose', 'clipboard'] },
+  // Water through the drip tape (every emitter drips) while the worker notes
+  // the soil moisture on a clipboard.
+  'riego-humedad': { motion: 'note', props: ['clipboard', 'pencil'], drip: true },
   'control-calidad': { motion: 'inspect', props: ['clipboard'] },
 };
 
 export function workerActionFor(code: string | null | undefined): WorkerAction | null {
   return (code && WORKER_ACTIONS[code]) || null;
+}
+
+/**
+ * What the worker on a lot does. On a day with logs, the last one logged, so a
+ * general action (irrigation, a pest check...) shows that day. Otherwise, or
+ * when today's log has no animation, the last action with a phase: it stays
+ * until a newer one is logged, however long ago it was.
+ */
+export function lotWorkerAction(
+  cycle: Pick<CycleSummary, 'lastLog' | 'lastPhaseLog'> | null,
+  today: string,
+): WorkerAction | null {
+  if (!cycle) return null;
+  const todays = cycle.lastLog?.date === today ? workerActionFor(cycle.lastLog.code) : null;
+  return todays ?? workerActionFor(cycle.lastPhaseLog?.code);
 }

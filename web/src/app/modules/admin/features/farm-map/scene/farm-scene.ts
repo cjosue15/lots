@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DObject, CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
+import { todayInPeru } from '../../../../../shared/peru-date';
 import { type Activity, daysWithoutLogs } from '../activity';
 import type { FarmLayout } from '../layout';
-import { workerActionFor } from '../worker-actions';
+import { lotWorkerAction } from '../worker-actions';
 import { buildBed } from './beds';
 import { buildGreenhouse } from './greenhouse';
 import { COLORS, SceneAssets } from './materials';
@@ -151,6 +152,7 @@ export class FarmScene {
     const hitMaterial = new THREE.MeshBasicMaterial({ visible: false });
     const unitBox = this.assets.geometry('unit-box', () => new THREE.BoxGeometry(1, 1, 1));
 
+    const today = todayInPeru();
     for (const gh of layout.greenhouses) {
       this.content.add(buildGreenhouse(this.assets, gh));
       const ghLabel = this.label(gh.name, 'greenhouse', gh.x, 0.3, gh.z);
@@ -159,9 +161,9 @@ export class FarmScene {
 
       for (const { lot, x, z, width, depth } of gh.beds) {
         const state = activity.get(lot.id) ?? 'idle';
-        // The last action logged keeps being shown until a newer one is logged,
-        // however long ago it was; the frame still tells how recent it is.
-        const action = workerActionFor(lot.cycle?.lastLog?.code);
+        // The last action with a phase stays until a newer one is logged; a
+        // general action shows only on its day (see lotWorkerAction).
+        const action = lotWorkerAction(lot.cycle, today);
         // While someone works on it, the bed shows what that work needs.
         const phase = action?.ridge
           ? (action.phase ?? 1)

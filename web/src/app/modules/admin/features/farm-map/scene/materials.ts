@@ -23,6 +23,8 @@ export const COLORS = {
   /** Drops and wet patches of water mixed with a product: milky white. */
   dropProduct: 0xeeeee6,
   wetProduct: 0xb8b8ae,
+  /** Backpack sprayer's hose, straps and nozzle. */
+  sprayerHose: 0x2e3133,
   plasticScrap: 0x3a3836,
   stem: 0x4d7a35,
   /** Cucumber vine and petioles: light, almost yellowish green. */
@@ -60,7 +62,6 @@ export const COLORS = {
   metal: 0x9ea3a6,
   bucket: 0xd8d4c8,
   sack: 0xc9b48a,
-  hose: 0x3f7a3a,
   trayBlack: 0x2a2a28,
   box: 0xf4f2ec,
   basket: 0xb08a52,

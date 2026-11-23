@@ -37,6 +37,10 @@ import {
   discardedCucumber,
   discardedPlant,
   yellowCucumbers,
+  COVER_TOP,
+  DRENCH_RADIUS,
+  drenchGeometry,
+  drenchMaterial,
 } from './beds';
 import { COLORS, type SceneAssets } from './materials';
 import {
@@ -110,6 +114,15 @@ const CLEAR = {
   release: 0.05,
 };
 
+/** Seconds to spray one seedling's base. */
+const DRENCH_CYCLE = 2.6;
+/** When, in a seedling's cycle, the step to it ends, and the spray starts and stops. */
+const DRENCH = { step: 0.22, spray: 0.36, stop: 0.8 };
+/** How far short of the seedling the worker stands, so the lance reaches forward. */
+const DRENCH_STANDOFF = 0.12;
+/** Mist particles coming out of the sprayer's nozzle. */
+const MIST = 36;
+
 /** Most cucumbers drawn in a basket. */
 const BASKET_FRUIT = 9;
 
@@ -150,7 +163,6 @@ const PROP_SLOT: Record<PropKind, Slot> = {
   'tape-spool': 'front',
   'mush-spool': 'front',
   sprayer: 'back',
-  hose: 'handR',
   jug: 'ground',
   clipboard: 'handL',
   pencil: 'handR',
@@ -187,6 +199,12 @@ export class Worker {
   private hanging: THREE.Group | null = null;
   /** Cucumbers in the basket, if the worker carries one. */
   private basketFruit: THREE.InstancedMesh | null = null;
+  /** Lance, hose and mist of the backpack sprayer, if the worker carries one. */
+  private readonly sprayer: Sprayer | null = null;
+  /** Where the mist goes while drenching (a seedling's base); null = along the lance. */
+  private sprayTarget: THREE.Vector3 | null = null;
+  /** Whether the sprayer is spraying this frame. */
+  private spraying = false;
   private readonly offset: number;
 
   constructor(
@@ -207,7 +225,8 @@ export class Worker {
       action.motion === 'uproot' ||
       action.motion === 'cut' ||
       action.motion === 'feel' ||
-      action.motion === 'clear'
+      action.motion === 'clear' ||
+      action.ridge === 'drench-seedlings'
     ) {
       // On the bed's outer edge beside the first ridge, facing it (and the
       // camera), so the plant coming out is in view; pulled plants go outside.
@@ -287,9 +306,13 @@ export class Worker {
 
     if (action.ridge) this.ridgeWork = this.buildRidgeWork(action.ridge, bed);
     if (action.drip) this.drops = this.buildDrops(bed);
+    if (action.props.includes('sprayer')) this.sprayer = this.buildSprayer();
 
     this.root.traverse((object) => {
-      if (object instanceof THREE.Mesh) object.castShadow = true;
+      // Water, mist and wet patches cast no shadow.
+      if (object instanceof THREE.Mesh && !(object.material as THREE.Material).transparent) {
+        object.castShadow = true;
+      }
     });
   }
 
@@ -311,9 +334,6 @@ export class Worker {
         break;
       case 'spray':
         this.spray(t);
-        break;
-      case 'water':
-        this.water(t);
         break;
       case 'kneel':
         this.kneel(t);
@@ -360,6 +380,7 @@ export class Worker {
     this.keepUpright();
     this.ridgeWork?.afterPose?.();
     if (this.drops) this.drip(t, this.drops);
+    if (this.sprayer) this.updateSprayer(t, this.sprayer);
   }
 
   // Motions -------------------------------------------------------------
@@ -430,6 +451,12 @@ export class Worker {
   }
 
   private spray(t: number): void {
+    if (this.ridgeWork) {
+      this.drench(t, this.ridgeWork);
+      return;
+    }
+    // Sweeping the lance over the plants while walking, spraying all along.
+    this.spraying = true;
     const distance = this.walkTo(t * 0.3);
     this.walkLegs(distance, 0.6);
     this.torso.rotation.x = 0.15;
@@ -440,13 +467,36 @@ export class Worker {
     this.pose(this.arms[1], -0.3 + 0.25 * Math.sin(t * 5), -1.3, 0.1);
   }
 
-  private water(t: number): void {
-    this.walkTo(Math.floor(t / 6) * 1.2);
-    this.torso.rotation.y = 0.45 * Math.sin(t * 0.8);
-    this.torso.rotation.x = 0.1;
-    this.pose(this.arms[0], -1.1, -0.35, -0.1);
-    this.pose(this.arms[1], -0.6, -1.2, 0.1);
-    this.head.rotation.x = 0.25;
+  /**
+   * Seedling by seedling along the first ridge, from the bed's outer edge and
+   * walking towards -z so the ridge (and the camera) is on the right: steps up
+   * to it, turns and points the lance at its base, sprays until the plastic
+   * around it is wet, and goes on to the next one, pumping all the while.
+   */
+  private drench(t: number, work: RidgeProgress): void {
+    const k = (t % DRENCH_CYCLE) / DRENCH_CYCLE;
+    const spots = seedlingsAlong(work.depth).reverse();
+    const i = Math.floor(t / DRENCH_CYCLE) % spots.length;
+    const previous = spots[Math.max(0, i - 1)];
+    const step = smooth(k / DRENCH.step);
+    this.figure.position.z = previous + (spots[i] - previous) * step + DRENCH_STANDOFF;
+    this.figure.rotation.y = Math.PI;
+    if (k < DRENCH.step && i > 0) this.walkLegs(step * 0.45, 0.6);
+
+    // Turned to the ridge on the right (+x) and bent a little over the lance.
+    const aim = smooth((k - DRENCH.step) / 0.1) - smooth((k - DRENCH.stop) / 0.12);
+    this.torso.rotation.x = 0.1 + 0.3 * aim;
+    this.torso.rotation.y = -0.45 * aim;
+    this.head.rotation.x = 0.1 + 0.35 * aim;
+    this.pose(this.arms[0], -0.35 - 0.15 * aim, -0.3 + 0.1 * aim, -0.1 - 0.05 * aim);
+    // Left hand works the pump lever.
+    this.pose(this.arms[1], -0.3 + 0.25 * Math.sin(t * 5), -1.3, 0.1);
+
+    this.spraying = k > DRENCH.spray && k < DRENCH.stop;
+    if (this.sprayTarget) this.sprayTarget.z = spots[i];
+    // The patch spreads while the spray lasts (the edge moves towards -z).
+    const wet = clamp01((k - DRENCH.spray) / (DRENCH.stop - DRENCH.spray));
+    work.update(spots[i] + 0.2 - 0.001 - 0.398 * wet);
   }
 
   private kneel(t: number): void {
@@ -933,6 +983,10 @@ export class Worker {
       return this.harvestWork(x, ground + RIDGE_HEIGHT, length, depth);
     }
 
+    if (work === 'drench-seedlings') {
+      return this.drenchWork(x, ground + RIDGE_HEIGHT, length, depth);
+    }
+
     if (work === 'prune-leaves') {
       return this.pruneWork(x, ground + RIDGE_HEIGHT, length, depth);
     }
@@ -1118,6 +1172,154 @@ export class Worker {
         if (emitters) emitters.mesh.count = emitters.spots.filter((z) => z > from && z < to).length;
       },
     };
+  }
+
+  /**
+   * A wet patch at the base of each seedling of the first ridge, spreading
+   * while it is sprayed. The worker goes towards -z, so the progress is
+   * (z - edge) / 0.4 + 0.5, clamped.
+   */
+  private drenchWork(x: number, top: number, length: number, depth: number): RidgeProgress {
+    const spots = seedlingsAlong(depth);
+    const patches = new THREE.InstancedMesh(
+      drenchGeometry(this.assets),
+      drenchMaterial(this.assets),
+      spots.length,
+    );
+    // Patches change size: bounds worked out once would go stale.
+    patches.frustumCulled = false;
+    this.root.add(patches);
+    // Just above the plastic at the seedling's base.
+    this.sprayTarget = new THREE.Vector3(x, top + 0.03, 0);
+    const dummy = new THREE.Object3D();
+    const shown = spots.map(() => -1);
+    return {
+      length,
+      depth,
+      update: (edge) => {
+        spots.forEach((z, i) => {
+          const wet = clamp01((z - edge) / 0.4 + 0.5);
+          if (wet === shown[i]) return;
+          shown[i] = wet;
+          dummy.position.set(x, top + COVER_TOP, z);
+          dummy.scale.setScalar(wet > 0 ? DRENCH_RADIUS * (0.25 + 0.75 * smooth(wet)) : 0.0001);
+          dummy.updateMatrix();
+          patches.setMatrixAt(i, dummy.matrix);
+        });
+        patches.instanceMatrix.needsUpdate = true;
+      },
+    };
+  }
+
+  /**
+   * The lance in the right hand (the tank is the 'sprayer' prop on the back),
+   * the hose from the tank to it, and the mist out of its nozzle.
+   */
+  private buildSprayer(): Sprayer {
+    const dark = this.material(COLORS.sprayerHose, { roughness: 0.6 });
+    const metal = this.material(COLORS.metal, { metalness: 0.6, roughness: 0.4 });
+    // On from the forearm, bent down (hand -z is down while the arm points forward).
+    const tip = new THREE.Vector3(0, -0.45, -0.18);
+    const lance = new THREE.Group();
+    const rod = this.mesh(this.cylinder(1, 1, 1), metal, [0, 0, 0], [0.012, tip.length(), 0.012]);
+    rod.position.copy(tip).multiplyScalar(0.5);
+    rod.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tip.clone().normalize());
+    // Handle with the trigger, in the hand.
+    const grip = this.mesh(this.cylinder(1, 1, 1), dark, [0, -0.04, 0.016], [0.022, 0.12, 0.022]);
+    grip.quaternion.copy(rod.quaternion);
+    const nozzle = this.mesh(this.cylinder(0.6, 1, 1), dark, [0, 0, 0], [0.025, 0.05, 0.025]);
+    nozzle.position.copy(tip);
+    nozzle.quaternion.copy(rod.quaternion);
+    const end = new THREE.Object3D();
+    end.position.copy(tip).multiplyScalar(1.06);
+    lance.add(rod, grip, nozzle, end);
+    this.slots.handR.add(lance);
+
+    // The hose leaves the tank at its bottom, on the right.
+    const outlet = new THREE.Object3D();
+    outlet.position.set(-0.08, -0.22, 0);
+    this.slots.back.add(outlet);
+    const hose = Array.from({ length: 5 }, () => {
+      const piece = this.mesh(this.cylinder(1, 1, 1), dark, [0, 0, 0]);
+      this.root.add(piece);
+      return piece;
+    });
+
+    const tint = new THREE.Color(this.action.tint ?? 0xffffff).lerp(
+      new THREE.Color(0xffffff),
+      0.55,
+    );
+    const mist = new THREE.InstancedMesh(
+      this.assets.geometry('mist', () => new THREE.IcosahedronGeometry(1, 1)),
+      this.material(tint.getHex(), {
+        roughness: 1,
+        transparent: true,
+        opacity: 0.45,
+        depthWrite: false,
+      }),
+      MIST,
+    );
+    // Particles move every frame, so bounds worked out once would go stale.
+    mist.frustumCulled = false;
+    this.root.add(mist);
+    const rand = random(17);
+    const spread = Array.from({ length: MIST }, () =>
+      new THREE.Vector3(rand() - 0.5, rand() - 0.5, rand() - 0.5)
+        .normalize()
+        .multiplyScalar(rand()),
+    );
+    return { grip: lance, end, outlet, hose, mist, spread };
+  }
+
+  /**
+   * The hose sags from the tank to the hand, and while spraying the mist
+   * streams from the nozzle to where it is aimed, spreading as it goes.
+   */
+  private updateSprayer(t: number, sprayer: Sprayer): void {
+    const { a, b, c, d, from, to } = SPRAY_SCRATCH;
+    this.root.updateMatrixWorld(true);
+    this.root.worldToLocal(sprayer.outlet.getWorldPosition(a));
+    this.root.worldToLocal(sprayer.grip.getWorldPosition(b));
+    // Sags below both ends.
+    c.addVectors(a, b).multiplyScalar(0.5);
+    c.y = Math.min(a.y, b.y) - 0.18;
+    const n = sprayer.hose.length;
+    const bezier = (u: number, out: THREE.Vector3) =>
+      out
+        .copy(a)
+        .multiplyScalar((1 - u) * (1 - u))
+        .addScaledVector(c, 2 * u * (1 - u))
+        .addScaledVector(b, u * u);
+    sprayer.hose.forEach((piece, i) => {
+      bezier(i / n, from);
+      bezier((i + 1) / n, to);
+      d.subVectors(to, from);
+      const length = d.length();
+      piece.position.addVectors(from, to).multiplyScalar(0.5);
+      piece.quaternion.setFromUnitVectors(UP, d.divideScalar(length || 1));
+      piece.scale.set(0.011, length + 0.01, 0.011);
+    });
+
+    // Nozzle, and where the mist goes: the target, or on along the lance.
+    this.root.worldToLocal(sprayer.end.getWorldPosition(from));
+    if (this.sprayTarget) {
+      to.copy(this.sprayTarget);
+    } else {
+      d.subVectors(from, b).normalize();
+      to.copy(from).addScaledVector(d, 0.7);
+    }
+    const dummy = DROP_DUMMY;
+    dummy.rotation.set(0, 0, 0);
+    for (let i = 0; i < MIST; i++) {
+      const u = (t * 2.4 + i / MIST) % 1;
+      const size = this.spraying ? (0.016 + 0.045 * u) * (1 - smooth((u - 0.75) / 0.25)) : 0;
+      dummy.position.lerpVectors(from, to, u).addScaledVector(sprayer.spread[i], 0.14 * u);
+      dummy.scale.setScalar(Math.max(0.0001, size));
+      dummy.updateMatrix();
+      sprayer.mist.setMatrixAt(i, dummy.matrix);
+    }
+    sprayer.mist.instanceMatrix.needsUpdate = true;
+    this.spraying = false;
   }
 
   /**
@@ -1812,19 +2014,17 @@ export class Worker {
       case 'mush-spool':
         add(cyl, this.material(COLORS.mush), [0, 0, 0], [0.12, 0.7, 0.12], [0, 0, Math.PI / 2]);
         break;
-      case 'sprayer':
+      case 'sprayer': {
+        // Tank with its lid, and the straps over the shoulders.
+        const dark = this.material(COLORS.sprayerHose, { roughness: 0.6 });
         add(cyl, tint, [0, 0, -0.04], [0.15, 0.48, 0.12]);
+        add(cyl, dark, [0, 0.26, -0.04], [0.07, 0.05, 0.07]);
+        for (const side of [-1, 1]) {
+          add(this.box(), dark, [side * 0.09, 0.24, 0.1], [0.04, 0.012, 0.3]);
+          add(this.box(), dark, [side * 0.09, 0.02, 0.28], [0.04, 0.42, 0.012]);
+        }
         break;
-      case 'hose':
-        add(cyl, metal, [0, -0.05, 0.12], [0.015, 0.3, 0.015], [Math.PI / 2.2, 0, 0]);
-        add(
-          this.torus(),
-          this.material(COLORS.hose),
-          [0, -0.5, -0.15],
-          [0.3, 0.3, 0.3],
-          [Math.PI / 2, 0, 0],
-        );
-        break;
+      }
       case 'jug':
         add(this.box(), tint, [0, 0.16, 0], [0.2, 0.32, 0.14]);
         add(cyl, this.material(COLORS.string), [0, 0.35, 0], [0.04, 0.06, 0.04]);
@@ -1974,6 +2174,29 @@ interface Drops {
   /** Ridge surface, where drops land. */
   ground: number;
 }
+interface Sprayer {
+  /** The lance, held at its grip: where the hose ends. */
+  grip: THREE.Object3D;
+  /** Just past the nozzle, where the mist comes out. */
+  end: THREE.Object3D;
+  /** Where the hose leaves the tank. */
+  outlet: THREE.Object3D;
+  /** Hose pieces, placed every frame along its sag. */
+  hose: THREE.Mesh[];
+  mist: THREE.InstancedMesh;
+  /** Each mist particle's sideways drift, up to 1. */
+  spread: THREE.Vector3[];
+}
+/** Scratch vectors for updateSprayer. */
+const SPRAY_SCRATCH = {
+  a: new THREE.Vector3(),
+  b: new THREE.Vector3(),
+  c: new THREE.Vector3(),
+  d: new THREE.Vector3(),
+  from: new THREE.Vector3(),
+  to: new THREE.Vector3(),
+};
+const UP = new THREE.Vector3(0, 1, 0);
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 const smooth = (x: number) => {
   const c = clamp01(x);

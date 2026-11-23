@@ -275,6 +275,27 @@ export function fallenLeaf(x: number, z: number, i: number, k: number) {
 /** Height of a seedling above the ridge. */
 export const SEEDLING_HEIGHT = 0.15;
 
+/** Radius of the wet patch of product the sprayer leaves at a seedling's base. */
+export const DRENCH_RADIUS = 0.13;
+/** Height of the plastic's top over the ridge, where wet patches lie. */
+export const COVER_TOP = 0.012;
+
+/** A wet patch lying flat, radius 1. */
+export function drenchGeometry(assets: SceneAssets): THREE.BufferGeometry {
+  return assets.geometry('drench-patch', () =>
+    new THREE.CircleGeometry(1, 18).rotateX(-Math.PI / 2),
+  );
+}
+
+export function drenchMaterial(assets: SceneAssets): THREE.Material {
+  return assets.material(COLORS.wetProduct, {
+    roughness: 0.2,
+    transparent: true,
+    opacity: 0.6,
+    depthWrite: false,
+  });
+}
+
 /** Seedling (plantín) positions along a ridge: one per plant spot. */
 export function seedlingsAlong(depth: number): number[] {
   return spotsAlong(depth);
@@ -576,6 +597,27 @@ export function buildBed(
       // Ready for planting; the others already have their seedlings.
       ridges(() => true);
       group.add(tapes(ridgeXs(width)), seedlings(others));
+      return { group, height: ridgeTop + SEEDLING_HEIGHT };
+    } else if (work === 'drench-seedlings') {
+      // Seedlings everywhere; the others already wet with product at the base.
+      ridges(() => true);
+      group.add(
+        tapes(ridgeXs(width)),
+        seedlings(ridgeXs(width)),
+        instanced(
+          drenchGeometry(assets),
+          drenchMaterial(assets),
+          others.flatMap((x) =>
+            spotsAlong(depth).map((z) => ({
+              x,
+              y: ridgeTop + COVER_TOP,
+              z,
+              sx: DRENCH_RADIUS,
+              sz: DRENCH_RADIUS,
+            })),
+          ),
+        ),
+      );
       return { group, height: ridgeTop + SEEDLING_HEIGHT };
     } else if (work === 'pull-tape' || work === 'lay-tape') {
       ridges(() => false);
