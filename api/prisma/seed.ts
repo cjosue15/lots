@@ -9,7 +9,8 @@ const prisma = new PrismaClient({
 const { NONE, APPLICATION, IRRIGATION, PEST_CHECK, FERTILIZER_EVAL } =
   DetailType;
 
-type ActionSeed = [name: string, detailType: DetailType];
+/** `code` links the action to its 3D animation (web farm-map/scene/workers). */
+type ActionSeed = [code: string, name: string, detailType: DetailType];
 
 const GREENHOUSES: [name: string, lots: number][] = [
   ['El Dorado', 3],
@@ -21,83 +22,105 @@ const PHASES: [name: string, actions: ActionSeed[]][] = [
   [
     'Limpieza del campo',
     [
-      ['Recoger el plástico mulch', NONE],
-      ['Recoger las cintas de riego por goteo', NONE],
+      ['recoger-mulch', 'Recoger el plástico mulch', NONE],
+      ['recoger-cintas', 'Recoger las cintas de riego por goteo', NONE],
     ],
   ],
   [
     'Preparación del suelo',
     [
-      ['Poner guano en líneas y camellones', NONE],
-      ['Remover la tierra y mezclar el guano', NONE],
-      ['Hacer huecos en la línea e incorporar la broza', NONE],
-      ['Tapar los huecos con 15 cm de tierra', NONE],
+      ['poner-guano', 'Poner guano en líneas y camellones', NONE],
+      ['remover-tierra', 'Remover la tierra y mezclar el guano', NONE],
+      ['hacer-huecos', 'Hacer huecos en la línea e incorporar la broza', NONE],
+      ['tapar-huecos', 'Tapar los huecos con 15 cm de tierra', NONE],
     ],
   ],
   [
     'Instalación',
     [
-      ['Instalar la cinta de riego con goteros', NONE],
-      ['Colocar el plástico mulch', NONE],
-      ['Aplicar nematicida por riego', APPLICATION],
+      ['instalar-cinta', 'Instalar la cinta de riego con goteros', NONE],
+      ['colocar-mulch', 'Colocar el plástico mulch', NONE],
+      ['nematicida-instalacion', 'Aplicar nematicida por riego', APPLICATION],
     ],
   ],
-  ['Descomposición', [['Regar con agua interdiario', IRRIGATION]]],
+  [
+    'Descomposición',
+    [['regar-interdiario', 'Regar con agua interdiario', IRRIGATION]],
+  ],
   [
     'Plantines',
     [
-      ['Recibir los plantines', NONE],
-      ['Trasplantar', NONE],
-      ['Aplicar fungicida y enraizante', APPLICATION],
-      ['Aplicar la segunda fertilización', APPLICATION],
+      ['recibir-plantines', 'Recibir los plantines', NONE],
+      ['trasplantar', 'Trasplantar', NONE],
+      ['fungicida-enraizante', 'Aplicar fungicida y enraizante', APPLICATION],
+      [
+        'segunda-fertilizacion',
+        'Aplicar la segunda fertilización',
+        APPLICATION,
+      ],
     ],
   ],
   [
     'Crecimiento',
     [
-      ['Iniciar el tutorado', NONE],
-      ['Limpiar la planta', NONE],
+      ['iniciar-tutorado', 'Iniciar el tutorado', NONE],
+      ['limpiar-planta', 'Limpiar la planta', NONE],
     ],
   ],
   [
     'Producción',
     [
-      ['Aplicar fertilizante de producción', APPLICATION],
-      ['Evaluar fertilizantes', FERTILIZER_EVAL],
-      ['Iniciar la cosecha', NONE],
-      ['Controlar desperfectos', NONE],
+      [
+        'fertilizante-produccion',
+        'Aplicar fertilizante de producción',
+        APPLICATION,
+      ],
+      ['evaluar-fertilizantes', 'Evaluar fertilizantes', FERTILIZER_EVAL],
+      ['cosecha', 'Iniciar la cosecha', NONE],
+      ['controlar-desperfectos', 'Controlar desperfectos', NONE],
     ],
   ],
   [
     'Cierre del ciclo',
     [
-      ['Aplicar nematicida por riego', APPLICATION],
-      ['Arrancar la planta de raíz', NONE],
-      ['Cortar la raíz y botarla', NONE],
-      ['Dejar secar la planta', NONE],
-      ['Bajar la planta al suelo y retirar pepinillos amarillos', NONE],
+      ['nematicida-cierre', 'Aplicar nematicida por riego', APPLICATION],
+      ['arrancar-planta', 'Arrancar la planta de raíz', NONE],
+      ['cortar-raiz', 'Cortar la raíz y botarla', NONE],
+      ['secar-planta', 'Dejar secar la planta', NONE],
+      [
+        'bajar-planta',
+        'Bajar la planta al suelo y retirar pepinillos amarillos',
+        NONE,
+      ],
     ],
   ],
 ];
 
 const GENERAL_ACTIONS: ActionSeed[] = [
-  ['Revisión de plagas y enfermedades', PEST_CHECK],
-  ['Aplicar químico', APPLICATION],
-  ['Fungicida y enraizante', APPLICATION],
-  ['Foliares', APPLICATION],
-  ['Riego y registro de humedad', IRRIGATION],
-  ['Control de calidad', NONE],
+  ['revision-plagas', 'Revisión de plagas y enfermedades', PEST_CHECK],
+  ['aplicar-quimico', 'Aplicar químico', APPLICATION],
+  ['fungicida-general', 'Fungicida y enraizante', APPLICATION],
+  ['foliares', 'Foliares', APPLICATION],
+  ['riego-humedad', 'Riego y registro de humedad', IRRIGATION],
+  ['control-calidad', 'Control de calidad', NONE],
 ];
 
-/** Creates the action only if it does not exist yet (phaseId can be null, so no upsert). */
+/**
+ * Creates the action if it does not exist yet (phaseId can be null, so no
+ * upsert); an existing one only gets its code.
+ */
 async function ensureAction(
   phaseId: string | null,
-  [name, detailType]: ActionSeed,
+  [code, name, detailType]: ActionSeed,
   order: number,
 ) {
   const existing = await prisma.action.findFirst({ where: { phaseId, name } });
-  if (!existing) {
-    await prisma.action.create({ data: { phaseId, name, order, detailType } });
+  if (existing) {
+    await prisma.action.update({ where: { id: existing.id }, data: { code } });
+  } else {
+    await prisma.action.create({
+      data: { phaseId, name, code, order, detailType },
+    });
   }
 }
 

@@ -26,6 +26,18 @@ export const COLORS = {
   adobe: 0xc8ad86,
   door: 0x5a4632,
   tin: 0xa7adaf,
+  // Worker and the things it carries.
+  skin: 0x8d5a3b,
+  pants: 0x3b4a5e,
+  boots: 0x2e2620,
+  hat: 0xd8c58a,
+  wood: 0x9a7548,
+  metal: 0x9ea3a6,
+  bucket: 0xd8d4c8,
+  sack: 0xc9b48a,
+  hose: 0x3f7a3a,
+  trayBlack: 0x2a2a28,
+  basket: 0xb08a52,
   today: 0xe0a526,
   hover: 0xffffff,
 } as const;

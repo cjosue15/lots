@@ -133,7 +133,7 @@ Greenhouse ──< Lot ──< Cycle ──< ActionLog ──< ActionLogChange
 | `Greenhouse` (invernadero) | id, name |
 | `Lot` (lote) | id, greenhouseId, number, active |
 | `Phase` (fase) | id, order, name |
-| `Action` (acción de la plantilla) | id, phaseId (vacío = acción general), name, order, detailType, active |
+| `Action` (acción de la plantilla) | id, phaseId (vacío = acción general), name, code (clave única y opcional para la vista 3D), order, detailType, active |
 | `Cycle` (ciclo) | id, lotId, number (correlativo por lote), startDate, endDate, status (ACTIVE/CLOSED), createdById, createdAt |
 | `ActionLog` (registro) | id, cycleId, actionId (vacío = "Otra acción"), name (copia), phaseId (copia), date, details (JSONB), notes, userId, createdAt, updatedAt |
 | `ActionLogChange` (cambio de registro) | id, actionLogId, userId, changedAt, before (JSONB), after (JSONB) |
@@ -169,10 +169,16 @@ Greenhouse ──< Lot ──< Cycle ──< ActionLog ──< ActionLogChange
 
 ### Vista 3D de los lotes (administración)
 
-Página `/admin/map` (pestaña "Vista 3D"), solo para el admin, hecha con three.js.
+Página `/admin/map` (pestaña "Vista 3D"), solo para el admin, hecha con three.js. El código está en `web/src/app/modules/admin/features/farm-map/`.
 
-- **Distribución esquemática (v1):** los 3 invernaderos como naves con techo en arco de plástico translúcido, una al lado de otra. Dentro, los lotes son camas del mismo tamaño ordenadas por número, en 1 o 2 filas. **Más adelante** se reemplaza por la distribución real (posición, tamaño y orientación de cada nave y lote): la escena lee las posiciones de una sola función (`layout.ts`), así que solo cambia de dónde salen.
-- **Cada cama muestra su fase**, con geometría simple generada por código (sin modelos externos):
+- **Carga bajo demanda:** al entrar no se carga nada en 3D. Primero se elige un invernadero, en tarjetas con su número de lotes, cuántos tienen registros hoy y cuántos llevan 3 días o más sin registros. Recién entonces se descarga three.js y se construye solo ese invernadero. "Todos" (o "Ver todos juntos") construye los tres, pero solo si se elige.
+- **Distribución (`layout.ts`):**
+  - Sin techos, arcos, paredes ni malla, porque tapaban los lotes. Cada invernadero es solo su piso claro con los lotes encima.
+  - **Bungalows y Carmen Alto:** esquemáticos, con lotes del mismo tamaño ordenados por número, hasta 6 por fila.
+  - **El Dorado** sigue el croquis de la granja: tres lotes separados en una columna, con el 3 al fondo y el 1 adelante, cada uno con su propio piso. Entre el 2 y el 3 está la choza del guardián. Entre el 1 y el 2 están la piscina, pegada al 2, y un cuadrado de plantas, pegado al 1.
+  - **No se copian las medidas reales:** los lotes de El Dorado son del mismo orden de tamaño que los demás, para que en "Todos" se vean a una escala parecida.
+  - **Otro invernadero con distribución real:** se agrega en `SHAPES` (`layout.ts`) por nombre de invernadero, a partir de su croquis.
+- **Cada lote muestra su fase**, con geometría simple generada por código (sin modelos externos):
 
   | Fase | Cómo se ve |
   |---|---|
@@ -186,12 +192,44 @@ Página `/admin/map` (pestaña "Vista 3D"), solo para el admin, hecha con three.
   | 7. Producción | Plantas altas con pepinos |
   | 8. Cierre del ciclo | Plantas secas y caídas |
 
-- **Actividad reciente:** un lote con registros hoy se resalta; uno que lleva 3 días o más sin registros se ve atenuado.
-- **Interacción:** girar, acercar y desplazar la cámara; botones para enfocar cada invernadero; al pasar o tocar un lote, una tarjeta con lote, fase, día del ciclo y último registro; al hacer clic, abre la vista del lote.
-- **Datos:** `GET /lots` (fase, días y último registro), sin endpoints nuevos.
-- **Rendimiento:** three.js se carga solo en esta ruta; se dibuja solo cuando algo cambia (no en bucle continuo); se liberan los recursos al salir de la página.
-- **Accesibilidad:** la misma información como lista ("Ver como lista"), también cuando el navegador no soporta WebGL; se respeta "reducir movimiento".
-- **Después (v2):** línea de tiempo para reproducir el avance día a día (necesita un endpoint con la fase por día) y la distribución real.
+- **Actividad reciente:**
+  - Un lote con registros hoy lleva un marco dorado y su número en dorado.
+  - Un lote con 3 días o más sin registros no se tapa (la capa blanca confundía). Solo cambia su etiqueta: gris con borde punteado, un reloj y los días ("7 d").
+  - La tarjeta y la lista dicen los días exactos ("7 días sin registros").
+- **Trabajador animado** en cada lote con un registro de hoy, haciendo la acción de su último registro:
+  - **Relación acción → animación:** cada acción tiene un código estable, la columna `Action.code`. Es texto único y opcional, y no cambia aunque la acción se renombre. El id no sirve porque es distinto en cada base de datos. El nombre tampoco, porque se renombra y hay nombres repetidos ("Aplicar nematicida por riego" está en las fases 3 y 8). El seed asigna los códigos de las acciones actuales (`recoger-mulch`, `hacer-huecos`, `nematicida-cierre`, …), y `GET /lots` devuelve el código del último registro.
+  - **Catálogo (`worker-actions.ts`):** cada código apunta a un movimiento base más una variante (los objetos que lleva, el estilo y el color del producto), así que cada acción se ve distinta. Hay 11 movimientos base:
+    - recoger
+    - lampa: dar vuelta la tierra, cavar con la broza al lado, o empujar tierra
+    - echar guano
+    - tender: deja la cinta o el plástico en el lote
+    - fumigar: la mochila tiene el color del producto
+    - regar: con manguera; con bidón rojo en el nematicida por riego
+    - trasplantar
+    - cargar
+    - tutorar o limpiar
+    - cosechar
+    - revisar
+  - **Trabajador (`scene/worker.ts`):** low-poly, hecho con formas simples, con sombrero y camisas de colores variados. Camina por el surco entre las dos primeras líneas. En las fases 6 a 8 trabaja desde el pasillo junto al lote, porque las plantas altas lo taparían.
+  - **Acción nueva o editada:** el admin la crea o renombra en la plantilla. Luego, con Claude Code, se le asigna un código en la base y se agrega su entrada en el catálogo. Sin código (o con un código que no está en el catálogo) la acción no tiene trabajador.
+- **Interacción** (controles tipo mapa):
+  - Arrastrar (o un dedo) desplaza la vista.
+  - La rueda o pellizcar acerca hacia el cursor.
+  - El botón derecho (o dos dedos) gira la vista.
+  - El desplazamiento se detiene en el borde de los lotes.
+  - Hay botones para cambiar de invernadero.
+  - Un invernadero claramente alargado (como El Dorado) se mira de costado para que ocupe la pantalla.
+  - Al pasar o tocar un lote aparece una tarjeta con su fase, el día del ciclo y el último registro. Al hacer clic, la tarjeta queda fija con "Abrir lote".
+- **Datos:** `GET /lots` (fase, días y último registro con su código), sin endpoints nuevos.
+- **Rendimiento:**
+  - three.js se carga solo al elegir un invernadero.
+  - Se dibuja solo cuando algo cambia, salvo mientras hay trabajadores: entonces se anima en cada cuadro, con pausa automática al cambiar de pestaña.
+  - Se liberan los recursos al salir de la página.
+- **Accesibilidad:** la misma información como lista ("Ver como lista"), también cuando el navegador no soporta WebGL. Con "reducir movimiento" la cámara salta en vez de deslizarse y los trabajadores quedan quietos en su pose.
+- **Después (v2):**
+  - Línea de tiempo para reproducir el avance día a día (necesita un endpoint con la fase por día).
+  - Distribución real de Bungalows y Carmen Alto cuando haya croquis.
+  - Que el código de la acción también cambie el dibujo del lote, por ejemplo que se vean las cintas después de "Instalar la cinta de riego" aunque la fase sea la misma.
 
 ## 11. Tecnología e infraestructura
 

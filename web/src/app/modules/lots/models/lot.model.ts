@@ -12,7 +12,8 @@ export interface CycleSummary {
   days: number;
   /** null = no log with a phase yet ("Sin registros"). */
   phase: PhaseRef | null;
-  lastLog: { name: string; date: string } | null;
+  /** `code`: the action's key for the 3D view (null when it has none). */
+  lastLog: { name: string; date: string; code: string | null } | null;
 }
 
 export interface LotSummary {

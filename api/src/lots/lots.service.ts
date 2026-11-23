@@ -11,7 +11,12 @@ import {
   toActionLogResponse,
 } from '../action-logs/action-log.response.js';
 import type { AuthUser } from '../auth/auth-user.js';
-import { daysBetween, fromDbDate, todayInPeru, toDbDate } from '../common/peru-date.js';
+import {
+  daysBetween,
+  fromDbDate,
+  todayInPeru,
+  toDbDate,
+} from '../common/peru-date.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { currentPhase, type PhaseRef } from './current-phase.js';
 
@@ -23,7 +28,8 @@ export interface CycleSummary {
   days: number;
   /** `null` = "Sin registros" (no log with a phase yet). */
   phase: PhaseRef | null;
-  lastLog: { name: string; date: string } | null;
+  /** `code` is the action's 3D key (null for actions without one). */
+  lastLog: { name: string; date: string; code: string | null } | null;
 }
 
 export interface LotSummary {
@@ -63,7 +69,12 @@ const activeCycleInclude = {
   include: {
     actionLogs: {
       orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
-      select: { name: true, date: true, phase: { select: { order: true, name: true } } },
+      select: {
+        name: true,
+        date: true,
+        phase: { select: { order: true, name: true } },
+        action: { select: { code: true } },
+      },
     },
   },
 } satisfies Prisma.Lot$cyclesArgs;
@@ -106,7 +117,10 @@ export class LotsService {
             select: actionLogSelect,
           })
         : [],
-      this.prisma.cycle.findMany({ where: { lotId: id }, orderBy: { number: 'desc' } }),
+      this.prisma.cycle.findMany({
+        where: { lotId: id },
+        orderBy: { number: 'desc' },
+      }),
     ]);
 
     return {
@@ -120,7 +134,13 @@ export class LotsService {
     const cycle = await this.prisma.cycle.findUnique({
       where: { id },
       include: {
-        lot: { select: { id: true, number: true, greenhouse: { select: { id: true, name: true } } } },
+        lot: {
+          select: {
+            id: true,
+            number: true,
+            greenhouse: { select: { id: true, name: true } },
+          },
+        },
         actionLogs: {
           orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
           select: actionLogSelect,
@@ -143,10 +163,16 @@ export class LotsService {
    * the next number, in one transaction. The partial unique index guarantees a
    * single active cycle even if two people press the button at once.
    */
-  async startCycle(lotId: string, startDate: string | undefined, user: AuthUser) {
+  async startCycle(
+    lotId: string,
+    startDate: string | undefined,
+    user: AuthUser,
+  ) {
     const start = startDate ?? todayInPeru();
     if (start > todayInPeru()) {
-      throw new BadRequestException('La fecha de inicio no puede ser posterior a hoy');
+      throw new BadRequestException(
+        'La fecha de inicio no puede ser posterior a hoy',
+      );
     }
 
     try {
@@ -156,7 +182,9 @@ export class LotsService {
           throw new NotFoundException('El lote no existe');
         }
         if (!lot.active) {
-          throw new ConflictException('El lote está desactivado; pide al administrador que lo reactive');
+          throw new ConflictException(
+            'El lote está desactivado; pide al administrador que lo reactive',
+          );
         }
 
         const last = await tx.cycle.findFirst({
@@ -185,8 +213,13 @@ export class LotsService {
         });
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new ConflictException('Otra persona acaba de iniciar un ciclo en este lote');
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          'Otra persona acaba de iniciar un ciclo en este lote',
+        );
       }
       throw error;
     }
@@ -195,7 +228,13 @@ export class LotsService {
   }
 
   private toHistoryItem(
-    cycle: { id: string; number: number; startDate: Date; endDate: Date | null; status: 'ACTIVE' | 'CLOSED' },
+    cycle: {
+      id: string;
+      number: number;
+      startDate: Date;
+      endDate: Date | null;
+      status: 'ACTIVE' | 'CLOSED';
+    },
     today: string,
   ): CycleHistoryItem {
     const start = fromDbDate(cycle.startDate);
@@ -224,7 +263,13 @@ export class LotsService {
             startDate: fromDbDate(cycle.startDate),
             days: daysBetween(fromDbDate(cycle.startDate), today),
             phase: currentPhase(cycle.actionLogs),
-            lastLog: last ? { name: last.name, date: fromDbDate(last.date) } : null,
+            lastLog: last
+              ? {
+                  name: last.name,
+                  date: fromDbDate(last.date),
+                  code: last.action?.code ?? null,
+                }
+              : null,
           }
         : null,
     };

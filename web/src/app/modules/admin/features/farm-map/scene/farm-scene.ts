@@ -3,9 +3,11 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DObject, CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 import { type Activity, daysWithoutLogs } from '../activity';
 import type { FarmLayout } from '../layout';
+import { workerActionFor } from '../worker-actions';
 import { buildBed } from './beds';
 import { buildGreenhouse } from './greenhouse';
 import { COLORS, SceneAssets } from './materials';
+import { Worker } from './worker';
 
 export interface FarmSceneOptions {
   reducedMotion: boolean;
@@ -25,7 +27,8 @@ const CLICK_TOLERANCE = 6;
 
 /**
  * Owns the three.js renderer, camera and controls for the farm map. Renders on
- * demand (only when something changes) and frees everything in `dispose()`.
+ * demand (only when something changes, or every frame while workers are on
+ * screen) and frees everything in `dispose()`.
  */
 export class FarmScene {
   private readonly renderer: THREE.WebGLRenderer;
@@ -48,6 +51,8 @@ export class FarmScene {
     depth: number;
   }[] = [];
   private layout: FarmLayout | null = null;
+  /** People working on lots with a log today; while any exist the scene animates. */
+  private workers: Worker[] = [];
   private frameId = 0;
   private hovered: string | null = null;
   private selected: string | null = null;
@@ -175,6 +180,20 @@ export class FarmScene {
         this.hitBoxes.push(hit);
         this.content.add(hit);
 
+        const action = state === 'today' ? workerActionFor(lot.cycle?.lastLog?.code) : null;
+        if (action) {
+          const worker = new Worker(
+            this.assets,
+            action,
+            { width, depth, phase },
+            lot.number * 31 + gh.name.length,
+          );
+          worker.root.position.set(x, 0, z);
+          worker.update(0);
+          this.workers.push(worker);
+          this.content.add(worker.root);
+        }
+
         const label = this.label(String(lot.number), `lot ${state}`, x, 0.25, z + depth / 2 + 0.7);
         if (state === 'stale') appendStaleDays(label.element, daysWithoutLogs(lot) ?? 0);
         this.content.add(label);
@@ -200,7 +219,8 @@ export class FarmScene {
     const portrait = this.camera.aspect < 0.9;
     const across = gh ? gh.width : layout.width;
     const along = gh ? gh.depth : layout.depth;
-    const side = gh ? portrait !== along > across : portrait;
+    // Only clearly long greenhouses (like El Dorado) turn; near-square ones do not.
+    const side = gh ? portrait !== along > across * 1.3 : portrait;
     const width = side ? along : across;
     const depth = side ? across : along;
     // Distance that fits the box in both directions of the field of view.
@@ -331,6 +351,7 @@ export class FarmScene {
   }
 
   private clearContent(): void {
+    this.workers = [];
     const geometries = new Set<THREE.BufferGeometry>();
     const materials = new Set<THREE.Material>();
     this.content.traverse((object) => {
@@ -377,6 +398,11 @@ export class FarmScene {
       this.camera.position.lerpVectors(this.tween.from[0], this.tween.to[0], k);
       this.controls.target.lerpVectors(this.tween.from[1], this.tween.to[1], k);
       if (t >= 1) this.tween = null;
+      animating = true;
+    }
+    // Workers move all the time (still, posed, with reduced motion).
+    if (this.workers.length && !this.options.reducedMotion) {
+      for (const worker of this.workers) worker.update(now / 1000);
       animating = true;
     }
     // With damping, update() keeps returning true while the camera glides.

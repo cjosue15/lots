@@ -5,7 +5,7 @@ import { COLORS, type SceneAssets } from './materials';
 const RIDGE_SPACING = 1;
 const RIDGE_WIDTH = 0.6;
 const RIDGE_HEIGHT = 0.22;
-const SOIL_HEIGHT = 0.12;
+export const SOIL_HEIGHT = 0.12;
 const PLANT_SPACING = 0.45;
 
 /** Small deterministic PRNG, so a bed looks the same on every render. */

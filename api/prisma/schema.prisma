@@ -56,6 +56,8 @@ model Action {
   id         String     @id @default(uuid())
   phaseId    String?
   name       String
+  /// Stable key for the 3D view (worker animation); survives renames.
+  code       String?    @unique
   order      Int
   detailType DetailType @default(NONE)
   active     Boolean    @default(true)

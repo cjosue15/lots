@@ -59,7 +59,7 @@ describe('activityOf', () => {
     startDate,
     days: 0,
     phase: null,
-    lastLog: lastLog ? { name: 'Riego', date: lastLog } : null,
+    lastLog: lastLog ? { name: 'Riego', date: lastLog, code: null } : null,
   });
 
   it('classifies lots by their last log', () => {
