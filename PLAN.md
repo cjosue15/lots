@@ -154,12 +154,14 @@ Greenhouse ──< Lot ──< Cycle ──< ActionLog ──< ActionLogChange
 
 | Pantalla | Dispositivo | Contenido |
 |---|---|---|
-| Vista general | Celular y web | Lotes agrupados por invernadero, con número de ciclo, fase actual, días del ciclo y último registro |
-| Vista del lote | Celular y web | Ciclo activo, fase actual, línea de tiempo de registros, botones "Registrar acción" y "Nuevo ciclo" |
+| Vista general | Celular y web | Lotes agrupados por invernadero, con número de ciclo, fase actual, acciones generales de hoy, días del ciclo y último registro |
+| Vista del lote | Celular y web | Ciclo activo, fase actual, acciones generales de hoy, línea de tiempo de registros, botones "Registrar acción" y "Nuevo ciclo" |
 | Registrar / editar acción | Celular | Formulario de §8 |
 | Historial de ciclos | Celular y web | Ciclos del lote: número, inicio, fin y duración |
 | Detalle del registro | Celular y web | Datos e historial de cambios |
 | Administración | Web (solo admin) | Fases y acciones de la plantilla, lotes |
+
+- **Acciones generales de hoy:** las acciones sin fase (generales y "Otra acción" sin fase) no cambian la fase (§7). Si hay alguna registrada hoy, la vista general y la vista del lote la muestran bajo la fase ("Hoy: Riego y control de humedad"). Al día siguiente deja de mostrarse. El "Último" de la vista general es la última acción con fase, así que no repite la acción general.
 
 ### Administración (etapa 1)
 
@@ -328,4 +330,5 @@ Resultado: **una consulta a Supabase por usuario y por token**, es decir, aproxi
 - ~~Lista de cultivos~~: los cultivos pasan a la etapa 2.
 - ~~Tipo de detalle de cada acción~~: confirmado (§8), con todos los campos opcionales.
 - **Por confirmar: ¿cómo se aplica el fungicida y enraizante?** (fase 5). La vista 3D lo muestra por ahora como el nematicida, por la cinta de riego. Si se aplica con mochila u otra forma, cambiar su animación en `worker-actions.ts`.
+- **Pendiente (vista 3D): acciones generales en el trabajador.** Hoy el trabajador muestra el último registro, aunque sea una acción general como el riego, y se queda así hasta el siguiente registro. Se quiere que una acción general se muestre solo el día en que se registra y que después vuelva a la última acción con fase. Requiere que la API envíe también la última acción con fase (en `lots.service.ts`, sin migración).
 - **Por decidir: ¿juntar "Recibir los plantines" y "Trasplantar"?** (fase 5, §6). Mantenerlas separadas solo sirve si entre la llegada de los plantines y el trasplante pasan días y se quiere medir ese tiempo. Si se trasplantan el mismo día que llegan, es mejor una sola acción, por ejemplo "Recibir y trasplantar los plantines". En ese caso hay que actualizar el seed y `worker-actions.ts`, porque los códigos `recibir-plantines` y `trasplantar` tienen animaciones distintas.
