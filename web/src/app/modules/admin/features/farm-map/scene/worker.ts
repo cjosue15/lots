@@ -63,6 +63,8 @@ const SHOULDER_Y = 0.5;
 const STRIDE = 1.1;
 /** From this phase on (trellised plants) the worker stays in the aisle. */
 const TALL_PHASE = 6;
+/** The drip tape is on the ridges from this phase on (installed in phase 3). */
+const TAPE_PHASE = 3;
 
 const SHIRTS = [0x6f9fc8, 0xe7e2d6, 0x8a9a55, 0xc0603f, 0xd9b04a];
 
@@ -305,7 +307,8 @@ export class Worker {
     ground.position.set(0.45, 0, 0);
 
     if (action.ridge) this.ridgeWork = this.buildRidgeWork(action.ridge, bed);
-    if (action.drip) this.drops = this.buildDrops(bed);
+    // No drops before the tape is laid: they would fall from thin air.
+    if (action.drip && (bed.phase ?? 0) >= TAPE_PHASE) this.drops = this.buildDrops(bed);
     if (action.props.includes('sprayer')) this.sprayer = this.buildSprayer();
 
     this.root.traverse((object) => {
