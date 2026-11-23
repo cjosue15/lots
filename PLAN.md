@@ -161,7 +161,7 @@ Greenhouse ──< Lot ──< Cycle ──< ActionLog ──< ActionLogChange
 | Detalle del registro | Celular y web | Datos e historial de cambios |
 | Administración | Web (solo admin) | Fases y acciones de la plantilla, lotes |
 
-- **Acciones generales de hoy:** las acciones sin fase (generales y "Otra acción" sin fase) no cambian la fase (§7). Si hay alguna registrada hoy, la vista general y la vista del lote la muestran bajo la fase ("Hoy: Riego y control de humedad"). Al día siguiente deja de mostrarse. El "Último" de la vista general es la última acción con fase, así que no repite la acción general.
+- **Acciones generales de hoy:** las acciones sin fase (generales y "Otra acción" sin fase) no cambian la fase (§7). Si hay alguna registrada hoy, la vista general, la vista del lote y el recuadro de la vista 3D la muestran bajo la fase ("Hoy: Riego y control de humedad"). El recuadro 3D muestra las 3 más recientes, en lista. Al día siguiente deja de mostrarse. El "Último" de la vista general y del recuadro 3D es la última acción con fase, así que no repite la acción general.
 
 ### Administración (etapa 1)
 
@@ -198,15 +198,15 @@ Página `/admin/map` (pestaña "Vista 3D"), solo para el admin, hecha con three.
   - Un lote con registros hoy lleva un marco dorado y su número en dorado.
   - Un lote con 3 días o más sin registros no se tapa (la capa blanca confundía). Solo cambia su etiqueta: gris con borde punteado, un reloj y los días ("7 d").
   - La tarjeta y la lista dicen los días exactos ("7 días sin registros").
-- **Trabajador animado** en cada lote con un ciclo activo, haciendo la acción de su último registro. Sigue así hasta que se registre otra acción, aunque el registro sea de días atrás; el marco y la etiqueta del lote siguen indicando si hubo registros hoy:
+- **Trabajador animado** en cada lote con un ciclo activo, haciendo la acción de su último registro con fase. Sigue así hasta que se registre otra acción, aunque el registro sea de días atrás. Una acción general (riego, revisión de plagas...) se muestra solo el día en que se registra; al día siguiente vuelve la última acción con fase. Si el registro de hoy no tiene animación ("Otra acción"), también se muestra la última acción con fase. El marco y la etiqueta del lote siguen indicando si hubo registros hoy:
   - **Relación acción → animación:** cada acción tiene un código estable, la columna `Action.code`. Es texto único y opcional, y no cambia aunque la acción se renombre. El id no sirve porque es distinto en cada base de datos. El nombre tampoco, porque se renombra y hay nombres repetidos ("Aplicar nematicida por riego" está en las fases 3 y 8). El seed asigna los códigos de las acciones actuales (`recoger-mush`, `hacer-huecos`, `nematicida-cierre`, …), y `GET /lots` devuelve el código del último registro.
   - **Catálogo (`worker-actions.ts`):** cada código apunta a un movimiento base más una variante (los objetos que lleva, el estilo y el color del producto), así que cada acción se ve distinta. Hay 11 movimientos base:
     - recoger
     - lampa: dar vuelta la tierra, cavar con la broza al lado, o empujar tierra
     - echar guano
     - tender: deja la cinta o el plástico en el lote
-    - fumigar: la mochila tiene el color del producto
-    - regar: con manguera; con bidón rojo en el nematicida por riego
+    - fumigar: mochila del color del producto, con lanza, manguera y rocío que sale de la boquilla
+    - regar por la cinta: abre la válvula y gotean todos los goteros; con bidón rojo en el nematicida por riego. En "Riego y control de humedad" (general) gotea la cinta mientras el trabajador anota en una libreta
     - trasplantar
     - cargar
     - tutorar o limpiar
@@ -225,6 +225,7 @@ Página `/admin/map` (pestaña "Vista 3D"), solo para el admin, hecha con three.
     - `regar-interdiario` (`drip`): igual, solo con agua y sin bidón; el lote se dibuja como en la fase 4.
     - `recibir-plantines` (`carry`): el trabajador lleva una caja blanca con plantines; el lote se dibuja como en la fase 4, sin nada plantado.
     - `trasplantar` (`plant-seedlings`): las otras filas ya tienen sus plantines; el trabajador, arrodillado con la caja en el suelo, planta la primera uno por uno. El plantín es un cubo de sustrato con dos tallos y hojas anchas (`scene/seedling.ts`).
+    - `fungicida-enraizante` (`drench-seedlings`): las otras filas ya tienen una mancha húmeda de producto en la base de cada plantín. En la primera el trabajador, con la mochila y desde el borde del lote, se detiene en cada plantín, apunta la lanza a su base y la rocía hasta que se moja el plástico alrededor.
     - `fungicida-enraizante` (`drip`): por ahora igual que el nematicida, sobre el lote con plantines (fase 5). Falta confirmar cómo se aplica en el campo.
     - `iniciar-tutorado` (`tie-plants`): pitas ya colgadas del alambre; las otras filas tienen sus plantas jóvenes paradas en su pita. En la primera las plantas están echadas sobre el plástico y el trabajador, de cara a la fila, se agacha en cada una, la levanta y la amarra arriba. El lote se dibuja como en la fase 6.
     - `limpiar-planta` (`prune-leaves`): plantas en crecimiento; en las otras filas ya están limpias, con el tallo pelado abajo y sus hojas viejas (amarillentas) tiradas sobre el plástico. En la primera el trabajador, agachado de cara a la fila, corta con tijera las 3 hojas viejas de cada planta, que caen al plástico, y pasa a la siguiente.
@@ -329,6 +330,5 @@ Resultado: **una consulta a Supabase por usuario y por token**, es decir, aproxi
 - ~~Nombres de las variedades~~: las variedades pasan a la etapa 2.
 - ~~Lista de cultivos~~: los cultivos pasan a la etapa 2.
 - ~~Tipo de detalle de cada acción~~: confirmado (§8), con todos los campos opcionales.
-- **Por confirmar: ¿cómo se aplica el fungicida y enraizante?** (fase 5). La vista 3D lo muestra por ahora como el nematicida, por la cinta de riego. Si se aplica con mochila u otra forma, cambiar su animación en `worker-actions.ts`.
-- **Pendiente (vista 3D): acciones generales en el trabajador.** Hoy el trabajador muestra el último registro, aunque sea una acción general como el riego, y se queda así hasta el siguiente registro. Se quiere que una acción general se muestre solo el día en que se registra y que después vuelva a la última acción con fase. Requiere que la API envíe también la última acción con fase (en `lots.service.ts`, sin migración).
+- ~~Por confirmar: ¿cómo se aplica el fungicida y enraizante?~~ (fase 5): con mochila, dirigido a la base de cada plantín. La vista 3D ya lo muestra así.
 - **Por decidir: ¿juntar "Recibir los plantines" y "Trasplantar"?** (fase 5, §6). Mantenerlas separadas solo sirve si entre la llegada de los plantines y el trasplante pasan días y se quiere medir ese tiempo. Si se trasplantan el mismo día que llegan, es mejor una sola acción, por ejemplo "Recibir y trasplantar los plantines". En ese caso hay que actualizar el seed y `worker-actions.ts`, porque los códigos `recibir-plantines` y `trasplantar` tienen animaciones distintas.
