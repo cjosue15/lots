@@ -32,11 +32,15 @@ export interface CycleSummary {
   lastLog: { name: string; date: string; code: string | null } | null;
   /**
    * Names of today's logs without a phase (general actions and "Otra acción"
-   * without one), so they can be shown next to the phase on that day only.
+   * without one), newest first, so they can be shown next to the phase on
+   * that day only.
    */
   todayGeneral: string[];
-  /** Last log with a phase: what the overview shows as "Último". */
-  lastPhaseLog: { name: string; date: string } | null;
+  /**
+   * Last log with a phase: what the overview shows as "Último", and what the
+   * 3D worker goes back to once a general action is no longer today's.
+   */
+  lastPhaseLog: { name: string; date: string; code: string | null } | null;
 }
 
 export interface LotSummary {
@@ -279,7 +283,11 @@ export class LotsService {
                 }
               : null,
             lastPhaseLog: lastPhase
-              ? { name: lastPhase.name, date: fromDbDate(lastPhase.date) }
+              ? {
+                  name: lastPhase.name,
+                  date: fromDbDate(lastPhase.date),
+                  code: lastPhase.action?.code ?? null,
+                }
               : null,
             todayGeneral: [
               ...new Set(

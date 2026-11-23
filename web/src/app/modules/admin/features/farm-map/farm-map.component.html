@@ -158,10 +158,19 @@
                 cycle.phase ? cycle.phase.order + '. ' + cycle.phase.name : 'Sin registros de fase'
               }}
             </p>
+            @if (cycle.todayGeneral.length) {
+              <!-- The 3 most recent general actions of today (newest first). -->
+              <p class="mt-1 font-medium">Hoy:</p>
+              <ul class="list-disc pl-5 font-medium">
+                @for (name of cycle.todayGeneral.slice(0, 3); track name) {
+                  <li>{{ name }}</li>
+                }
+              </ul>
+            }
             <p class="text-muted-foreground tabular-nums">
               Ciclo {{ cycle.number }}, día {{ cycle.days }}
             </p>
-            @if (cycle.lastLog; as last) {
+            @if (cycle.lastPhaseLog; as last) {
               <p class="mt-1 text-muted-foreground">
                 Último: {{ last.name }}, {{ relativeDay(last.date).toLowerCase() }}
               </p>

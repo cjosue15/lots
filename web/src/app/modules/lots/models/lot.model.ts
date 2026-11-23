@@ -16,8 +16,8 @@ export interface CycleSummary {
   lastLog: { name: string; date: string; code: string | null } | null;
   /** Today's logs without a phase (general actions), shown on that day only. */
   todayGeneral: string[];
-  /** Last log with a phase: shown as "Último" in the overview. */
-  lastPhaseLog: { name: string; date: string } | null;
+  /** Last log with a phase: "Último" in the overview; the 3D worker falls back to it. */
+  lastPhaseLog: { name: string; date: string; code: string | null } | null;
 }
 
 export interface LotSummary {
