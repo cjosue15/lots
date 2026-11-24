@@ -104,16 +104,17 @@ export class AuthService {
       }
       return me;
     } catch (error) {
-      if (this.meRequest?.token === token) {
+      const current = this.meRequest?.token === token;
+      if (current) {
         this.meRequest = null;
-        this._me.set(null);
       }
-      if (error instanceof HttpErrorResponse && error.status === 401) {
-        return null;
-      }
-      if (error instanceof HttpErrorResponse && error.status === 403) {
+      const status = error instanceof HttpErrorResponse ? error.status : 0;
+      if (status === 401 || status === 403) {
+        if (current) this._me.set(null);
+        if (status === 401) return null;
         throw new AccessDeniedError(ACCESS_DENIED);
       }
+      // A temporary failure keeps who the user is; the next call retries.
       throw new AccessCheckError(ACCESS_CHECK_FAILED);
     }
   }

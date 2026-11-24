@@ -12,6 +12,15 @@ export const routes: Routes = [
     loadChildren: () => import('./modules/auth/auth.routes').then((m) => m.authRoutes),
   },
   {
+    // The access check failed for a temporary reason; the session is kept.
+    path: 'sin-conexion',
+    title: 'Sin conexión | Lotes Oro Verde',
+    loadComponent: () =>
+      import('./modules/auth/features/access-check-failed/access-check-failed.component').then(
+        (m) => m.AccessCheckFailedComponent,
+      ),
+  },
+  {
     path: '',
     canMatch: [authGuard],
     loadComponent: () => import('./layout/shell.component').then((m) => m.ShellComponent),
