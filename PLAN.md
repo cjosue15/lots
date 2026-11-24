@@ -408,4 +408,4 @@ Las pantallas del administrador (catálogo, detalle del producto y costos) se di
 2. Ingresos y movimientos, con el stock calculado y el kárdex.
 3. El formulario de aplicación elige el producto del catálogo y descuenta el stock, también al editar.
 4. Alertas de stock mínimo y ajustes de inventario.
-5. Después, el costo por lote y ciclo, y los reportes.
+5. El costo por lote y ciclo, y los reportes: pestaña "Costos" de administración (por rango de fechas) y el costo de cada ciclo en su detalle, solo para el admin. Cada aplicación usa el precio promedio del producto **a la fecha de la aplicación**, así que compras posteriores no cambian el costo de ciclos pasados.
