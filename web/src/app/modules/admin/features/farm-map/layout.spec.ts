@@ -1,6 +1,6 @@
 import type { LotSummary } from '../../../lots/models/lot.model';
 import { activityOf } from './activity';
-import { BED, computeLayout } from './layout';
+import { BED, computeLayout, type Rect } from './layout';
 
 const lot = (gh: string, number: number, cycle: LotSummary['cycle'] = null): LotSummary => ({
   id: `${gh}-${number}`,
@@ -49,6 +49,34 @@ describe('El Dorado shape', () => {
     const backToFront = [...dorado.beds].sort((a, b) => a.z - b.z).map((b) => b.lot.number);
     expect(backToFront).toEqual([3, 2, 1]);
     expect(dorado.depth).toBeGreaterThan(dorado.width);
+  });
+});
+
+describe('Carmen Alto shape', () => {
+  const [carmen] = computeLayout(
+    Array.from({ length: 9 }, (_, i) => lot('Carmen Alto', 9 - i)),
+  ).greenhouses;
+  const bed = (n: number) => carmen.beds.find((b) => b.lot.number === n)!;
+  const overlap = (a: Rect, b: Rect) =>
+    Math.abs(a.x - b.x) < (a.width + b.width) / 2 && Math.abs(a.z - b.z) < (a.depth + b.depth) / 2;
+
+  it('places 1–6 in two columns with 7 beside 6 and 8, 9 behind 2', () => {
+    expect(bed(1).x).toBeLessThan(bed(2).x);
+    expect(bed(1).z).toBeLessThan(bed(3).z);
+    expect(bed(3).z).toBeLessThan(bed(5).z);
+    expect(bed(7).x).toBeGreaterThan(bed(6).x);
+    expect(bed(7).z).toBeCloseTo(bed(6).z);
+    expect(bed(8).x).toBeCloseTo(bed(2).x);
+    expect(bed(9).z).toBeLessThan(bed(8).z);
+    expect(bed(8).z).toBeLessThan(bed(2).z);
+  });
+
+  it('keeps lots apart and inside the greenhouse', () => {
+    for (const a of carmen.beds) {
+      expect(Math.abs(a.x - carmen.x) + a.width / 2).toBeLessThanOrEqual(carmen.width / 2);
+      expect(Math.abs(a.z - carmen.z) + a.depth / 2).toBeLessThanOrEqual(carmen.depth / 2);
+      for (const b of carmen.beds) if (a !== b) expect(overlap(a, b)).toBe(false);
+    }
   });
 });
 
