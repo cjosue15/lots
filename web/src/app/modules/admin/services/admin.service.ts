@@ -3,6 +3,12 @@ import { inject, Service } from '@angular/core';
 import type { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import type { ActionInput, AdminGreenhouse, AdminTemplate } from '../models/admin.model';
+import type {
+  AdminProducts,
+  CreateProductInput,
+  ProductDetail,
+  UpdateProductInput,
+} from '../models/product-admin.model';
 
 /** Every mutation answers with the whole updated list. */
 @Service()
@@ -43,5 +49,43 @@ export class AdminService {
 
   updateLot(id: string, active: boolean): Observable<AdminGreenhouse[]> {
     return this.http.patch<AdminGreenhouse[]>(`${this.api}/lots/${id}`, { active });
+  }
+
+  getProducts(): Observable<AdminProducts> {
+    return this.http.get<AdminProducts>(`${this.api}/products`);
+  }
+
+  getProduct(id: string): Observable<ProductDetail> {
+    return this.http.get<ProductDetail>(`${this.api}/products/${id}`);
+  }
+
+  createProduct(body: CreateProductInput): Observable<ProductDetail> {
+    return this.http.post<ProductDetail>(`${this.api}/products`, body);
+  }
+
+  updateProduct(id: string, body: UpdateProductInput): Observable<ProductDetail> {
+    return this.http.patch<ProductDetail>(`${this.api}/products/${id}`, body);
+  }
+
+  addStock(
+    id: string,
+    body: { quantity: number; unitCost: number; date: string },
+  ): Observable<ProductDetail> {
+    return this.http.post<ProductDetail>(`${this.api}/products/${id}/entries`, body);
+  }
+
+  adjustStock(
+    id: string,
+    body: { counted: number; reason: string; date: string },
+  ): Observable<ProductDetail> {
+    return this.http.post<ProductDetail>(`${this.api}/products/${id}/adjustments`, body);
+  }
+
+  createCategory(name: string): Observable<AdminProducts> {
+    return this.http.post<AdminProducts>(`${this.api}/product-categories`, { name });
+  }
+
+  updateCategory(id: string, body: { name?: string; active?: boolean }): Observable<AdminProducts> {
+    return this.http.patch<AdminProducts>(`${this.api}/product-categories/${id}`, body);
   }
 }

@@ -106,6 +106,8 @@
                             <app-product-fields
                               [group]="group"
                               [index]="i"
+                              [products]="data.products"
+                              [legacyName]="legacyNames()[i] ?? null"
                               [removable]="form.controls.products.length > 1"
                               (remove)="removeProduct(i)"
                             />

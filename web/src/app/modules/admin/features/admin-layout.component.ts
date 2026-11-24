@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
-/** Admin area: title plus the two sections as tabs (links, so each has its own URL). */
+/** Admin area: title plus its sections as tabs (links, so each has its own URL). */
 @Component({
   selector: 'app-admin-layout',
   imports: [RouterLink, RouterLinkActive, RouterOutlet],
@@ -35,6 +35,7 @@ export class AdminLayoutComponent {
   protected readonly tabs = [
     { path: 'template', label: 'Plantilla' },
     { path: 'lots', label: 'Lotes' },
+    { path: 'products', label: 'Productos' },
     { path: 'map', label: 'Vista 3D' },
   ];
 }

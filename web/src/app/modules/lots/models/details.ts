@@ -16,9 +16,17 @@ export const DETAIL_LABELS: Record<string, string> = {
 
 /** Units a dose can be measured in, with the label the form shows. */
 export const DOSE_UNITS: Record<DoseUnit, string> = {
+  L: 'Litros',
   ML: 'Mililitros',
+  KG: 'Kilos',
+  G: 'Gramos',
   MG: 'Miligramos',
 };
+
+/** Units of the same kind as a product's unit (volume or weight), largest first. */
+export function unitsLike(unit: DoseUnit): DoseUnit[] {
+  return unit === 'L' || unit === 'ML' ? ['L', 'ML'] : ['KG', 'G', 'MG'];
+}
 
 /** How a product was applied, with its label. */
 export const APPLICATION_METHODS: Record<ApplicationMethod, string> = {
@@ -26,7 +34,12 @@ export const APPLICATION_METHODS: Record<ApplicationMethod, string> = {
   SPRAY: 'Fumigación',
 };
 
-const DOSE_SYMBOLS: Record<DoseUnit, string> = { ML: 'ml', MG: 'mg' };
+export const DOSE_SYMBOLS: Record<DoseUnit, string> = { L: 'L', ML: 'ml', KG: 'kg', G: 'g', MG: 'mg' };
+
+/** "2,5 L": an amount with its unit's symbol. */
+export function formatAmount(amount: number, unit: DoseUnit): string {
+  return `${amount.toLocaleString('es-PE', { maximumFractionDigits: 3 })} ${DOSE_SYMBOLS[unit]}`;
+}
 
 /** "250 ml": the amount with its unit's symbol. Older logs kept the dose as free text. */
 function describeDose({ dose, doseUnit }: { dose?: unknown; doseUnit?: unknown }): string | null {

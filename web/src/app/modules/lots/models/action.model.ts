@@ -2,7 +2,7 @@ import type { ApplicationMethod, DetailType, DoseUnit } from './lot.model';
 
 /** A product as the form sends it; empty fields are left out. */
 export interface ProductInput {
-  product: string;
+  productId: string;
   dose?: number;
   doseUnit?: DoseUnit;
   method?: ApplicationMethod;

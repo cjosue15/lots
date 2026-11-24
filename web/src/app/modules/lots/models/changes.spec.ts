@@ -19,7 +19,7 @@ describe('describeChange', () => {
   });
 
   it('shows the product lists before and after', () => {
-    const urea = { product: 'Urea', dose: 2, doseUnit: 'MG', method: null };
+    const urea = { productId: null, product: 'Urea', dose: 2, doseUnit: 'MG', method: null };
     expect(
       describeChange([
         { field: 'products', before: [], after: [urea, { ...urea, product: 'Bayfolan' }] },

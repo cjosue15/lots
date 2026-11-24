@@ -36,6 +36,7 @@ import type {
   DetailType,
   LotRef,
 } from '../../models/lot.model';
+import type { CatalogProduct } from '../../models/product.model';
 import { LotsService } from '../../services/lots.service';
 
 /** Value of the "Otra acción" option in the action select. */
@@ -46,6 +47,8 @@ interface FormContext {
   lot: LotRef;
   cycle: { id: string; number: number; startDate: string; endDate: string | null } | null;
   template: ActionTemplate;
+  /** Active catalog products with their stock, for APPLICATION actions. */
+  products: CatalogProduct[];
   /** Only when editing. */
   log: ActionLogDetail | null;
 }
@@ -102,6 +105,8 @@ export class RegisterLogComponent {
   protected readonly fertilizerResults = Object.entries(FERTILIZER_RESULTS);
   protected readonly today = todayInPeru();
   protected readonly saving = signal(false);
+  /** Per row: the name typed on a log from before the catalog, if any. */
+  protected readonly legacyNames = signal<(string | null)[]>([]);
 
   protected readonly form = this.fb.nonNullable.group({
     actionId: ['', Validators.required],
@@ -160,6 +165,7 @@ export class RegisterLogComponent {
 
   protected removeProduct(index: number): void {
     this.form.controls.products.removeAt(index);
+    this.legacyNames.update((names) => names.filter((_, i) => i !== index));
   }
 
   protected async submit(): Promise<void> {
@@ -170,7 +176,7 @@ export class RegisterLogComponent {
     if (this.isOther() && !value.otherName.trim()) {
       this.form.controls.otherName.setErrors({ required: true });
     }
-    // Also flags rows with a dose or a method but no name.
+    // Also flags rows with a quantity or a method but no product.
     const products = this.readProducts();
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -204,17 +210,25 @@ export class RegisterLogComponent {
 
   private loadContext(lotId?: string, logId?: string): Observable<FormContext> {
     const template = this.lotsService.getTemplate();
+    const products = this.lotsService.getProducts();
     if (logId) {
-      return forkJoin({ log: this.lotsService.getLog(logId), template }).pipe(
-        map(({ log, template }) => ({ lot: log.lot, cycle: log.cycle, template, log })),
+      return forkJoin({ log: this.lotsService.getLog(logId), template, products }).pipe(
+        map(({ log, template, products }) => ({
+          lot: log.lot,
+          cycle: log.cycle,
+          template,
+          products,
+          log,
+        })),
         tap(({ log }) => this.fillForm(log)),
       );
     }
-    return forkJoin({ lot: this.lotsService.getLot(lotId!), template }).pipe(
-      map(({ lot, template }) => ({
+    return forkJoin({ lot: this.lotsService.getLot(lotId!), template, products }).pipe(
+      map(({ lot, template, products }) => ({
         lot: { id: lot.id, number: lot.number, greenhouse: lot.greenhouse },
         cycle: lot.cycle ? { ...lot.cycle, endDate: null } : null,
         template,
+        products,
         log: null,
       })),
     );
@@ -238,6 +252,7 @@ export class RegisterLogComponent {
       notes: log.notes ?? '',
     });
     const products = log.products.length ? log.products : this.legacyProduct(details);
+    this.legacyNames.set(products.map((p) => (p.productId ? null : p.product)));
     this.form.setControl(
       'products',
       this.fb.nonNullable.array(
@@ -257,6 +272,7 @@ export class RegisterLogComponent {
     const amount = typeof dose === 'number' ? dose : Number.parseFloat(String(dose ?? '').replace(',', '.'));
     return [
       {
+        productId: null,
         product,
         dose: Number.isFinite(amount) && amount > 0 ? amount : null,
         doseUnit: doseUnit === 'MG' ? 'MG' : 'ML',

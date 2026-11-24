@@ -16,6 +16,22 @@ export const adminRoutes: Routes = [
           ),
       },
       {
+        path: 'products',
+        title: 'Productos | Administración | Oro Verde',
+        loadComponent: () =>
+          import('./features/products/products-admin.component').then(
+            (m) => m.ProductsAdminComponent,
+          ),
+      },
+      {
+        path: 'products/:id',
+        title: 'Producto | Administración | Oro Verde',
+        loadComponent: () =>
+          import('./features/products/product-detail.component').then(
+            (m) => m.ProductDetailComponent,
+          ),
+      },
+      {
         path: 'map',
         title: 'Vista 3D | Oro Verde',
         loadComponent: () =>

@@ -10,6 +10,7 @@ import type {
   LotDetail,
   LotSummary,
 } from '../models/lot.model';
+import type { CatalogProduct } from '../models/product.model';
 
 @Service()
 export class LotsService {
@@ -43,6 +44,11 @@ export class LotsService {
     return this.http
       .get<ActionTemplate>(`${this.api}/actions`)
       .pipe(tap((template) => (this.template = template)));
+  }
+
+  /** Active products with their stock, fresh each time (stock changes with every log). */
+  getProducts(): Observable<CatalogProduct[]> {
+    return this.http.get<CatalogProduct[]>(`${this.api}/products`);
   }
 
   createLog(cycleId: string, body: CreateActionLog): Observable<ActionLog> {

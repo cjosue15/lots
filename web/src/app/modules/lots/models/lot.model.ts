@@ -1,11 +1,15 @@
 export type DetailType = 'NONE' | 'APPLICATION' | 'IRRIGATION' | 'PEST_CHECK' | 'FERTILIZER_EVAL';
 
-export type DoseUnit = 'MG' | 'ML';
+/** Volume: L, ML. Weight: KG, G, MG. Products are measured in L, KG or G. */
+export type DoseUnit = 'MG' | 'ML' | 'L' | 'KG' | 'G';
 /** How a product was applied: through the irrigation system or sprayed. */
 export type ApplicationMethod = 'SYSTEM' | 'SPRAY';
 
 /** One product of an APPLICATION log. */
 export interface ApplicationProduct {
+  /** Catalog product; null on logs from before the catalog. */
+  productId: string | null;
+  /** Copy of the product's name. */
   product: string;
   dose: number | null;
   /** Set whenever dose is. */
