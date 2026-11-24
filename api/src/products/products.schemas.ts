@@ -2,6 +2,13 @@ import { z } from 'zod';
 import { daySchema, optionalText } from '../common/schemas.js';
 import { STOCK_UNITS } from './units.js';
 
+/** Cost report range (both days optional, inclusive). */
+export const costQuerySchema = z.object({
+  from: daySchema.optional(),
+  to: daySchema.optional(),
+});
+export type CostQuery = z.infer<typeof costQuerySchema>;
+
 const name = (max: number) =>
   z.string().trim().min(1, 'Escribe un nombre').max(max);
 const amount = (message: string) =>

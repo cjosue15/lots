@@ -1,9 +1,24 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import type { AuthUser } from '../auth/auth-user.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import { Roles } from '../auth/decorators/roles.decorator.js';
 import { uuidParam } from '../common/schemas.js';
 import {
+  type CostReport,
+  type CycleCost,
+  CostsService,
+} from './costs.service.js';
+import {
+  type CostQuery,
+  costQuerySchema,
   type CreateCategory,
   createCategorySchema,
   type CreateProduct,
@@ -39,7 +54,25 @@ export class ProductsController {
 @Roles('admin')
 @Controller('admin')
 export class AdminProductsController {
-  constructor(private readonly products: ProductsService) {}
+  constructor(
+    private readonly products: ProductsService,
+    private readonly costs: CostsService,
+  ) {}
+
+  /** What applications cost per cycle and per product (PLAN §14, "Costo"). */
+  @Get('costs')
+  costReport(
+    @Query({ schema: costQuerySchema }) query: CostQuery,
+  ): Promise<CostReport> {
+    return this.costs.report(query.from, query.to);
+  }
+
+  @Get('cycles/:id/costs')
+  cycleCosts(
+    @Param('id', { schema: uuidParam }) id: string,
+  ): Promise<CycleCost> {
+    return this.costs.cycle(id);
+  }
 
   @Get('products')
   list(): Promise<AdminProducts> {
