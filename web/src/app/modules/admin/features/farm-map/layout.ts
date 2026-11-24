@@ -11,7 +11,7 @@ const MAX_PER_ROW = 6;
 const GREENHOUSE_GAP = 6;
 
 /** Things on the land that are not lots. */
-export type FeatureKind = 'pool' | 'plants' | 'hut' | 'shed';
+export type FeatureKind = 'pool' | 'plants' | 'hut' | 'shed' | 'truck-h100' | 'truck-df815';
 
 export interface Rect {
   /** Centre and size. */
@@ -67,6 +67,8 @@ interface PlacedShape {
   lots: { lot: number; x: number; z: number }[];
   /** Covered ground; lots outside every floor are open air. */
   floors: Rect[];
+  /** Give every lot its own floor, like El Dorado's separate houses. */
+  lotFloors?: boolean;
   features: Feature[];
 }
 
@@ -90,6 +92,20 @@ const CA = (() => {
   const sideMid = -row;
   const sideEnd = row - LOT.depth / 2 - BED.aisle;
   return { col, row, houseWidth, houseDepth, side, behind, sideBack, sideMid, sideEnd };
+})();
+
+/**
+ * Bungalows, from the left of lot 12: one step per lot along a row, and the
+ * rows' centres from the back (12–8, then 7–4, then 3, 2 and 1 under 4).
+ */
+const BG = (() => {
+  const step = LOT.width + 1.6;
+  const row = LOT.depth + 1.6;
+  const back = 0;
+  // Between the back two rows: the store, the trucks and the office.
+  const yard = back + LOT.depth / 2 + BED.aisle + 1.3;
+  const middle = yard + 1.3 + BED.aisle + 2 + LOT.depth / 2;
+  return { step, row, back, yard, middle };
 })();
 
 /** Arrangements by greenhouse name, from the farm's sketches (not to scale). */
@@ -159,6 +175,26 @@ const SHAPES: Record<string, ColumnShape | PlacedShape> = {
       },
     ],
   },
+  // Two rows of lots, 12 to 8 at the back and 7 to 4 in the middle, with
+  // 3, 2 and 1 in a column in front of 4. Between the rows, the store under
+  // 9 with the two trucks (a Hyundai H100 and a Dongfeng DF-815) beside it,
+  // and the office further right.
+  Bungalows: {
+    kind: 'placed',
+    lots: [
+      ...[12, 11, 10, 9, 8].map((lot, i) => ({ lot, x: i * BG.step, z: BG.back })),
+      ...[7, 6, 5, 4].map((lot, i) => ({ lot, x: (i + 1) * BG.step, z: BG.middle })),
+      ...[3, 2, 1].map((lot, i) => ({ lot, x: 4 * BG.step, z: BG.middle + (i + 1) * BG.row })),
+    ],
+    floors: [],
+    lotFloors: true,
+    features: [
+      { kind: 'hut', x: 3 * BG.step, z: BG.yard, width: 3.6, depth: 2.6 },
+      { kind: 'truck-h100', x: 4 * BG.step - 1, z: BG.yard, width: 1.4, depth: 3.4 },
+      { kind: 'truck-df815', x: 4 * BG.step + 1, z: BG.yard - 0.2, width: 1.6, depth: 3.8 },
+      { kind: 'hut', x: 5 * BG.step + 0.6, z: BG.yard + 3.4, width: 3.2, depth: 3.2 },
+    ],
+  },
 };
 
 /** Local layout of one greenhouse, centred on the origin. */
@@ -185,7 +221,14 @@ function placed(shape: PlacedShape, lots: LotSummary[]): Local {
     const found = byNumber.get(lot);
     return found ? [{ lot: found, x, z, ...LOT }] : [];
   });
-  const rects: Rect[] = [...beds, ...shape.floors, ...shape.features];
+  const lotFloor = (bed: BedPlacement): Rect => ({
+    x: bed.x,
+    z: bed.z,
+    width: bed.width + 1.2,
+    depth: bed.depth + 1.2,
+  });
+  const floors = [...shape.floors, ...(shape.lotFloors ? beds.map(lotFloor) : [])];
+  const rects: Rect[] = [...beds, ...floors, ...shape.features];
   const minX = Math.min(...rects.map((r) => r.x - r.width / 2));
   const maxX = Math.max(...rects.map((r) => r.x + r.width / 2));
   const minZ = Math.min(...rects.map((r) => r.z - r.depth / 2));
@@ -195,12 +238,14 @@ function placed(shape: PlacedShape, lots: LotSummary[]): Local {
   const listed = new Set(shape.lots.map((item) => item.lot));
   const extra = lots.filter((lot) => !listed.has(lot.number));
   extra.forEach((lot, i) => {
-    beds.push({
+    const bed = {
       lot,
       x: minX + LOT.width / 2 + i * (LOT.width + BED.gap),
       z: maxZ + BED.aisle * 2 + LOT.depth / 2,
       ...LOT,
-    });
+    };
+    beds.push(bed);
+    if (shape.lotFloors) floors.push(lotFloor(bed));
   });
   if (extra.length) maxZ += BED.aisle * 2 + LOT.depth;
   const extraRight = minX + extra.length * (LOT.width + BED.gap) - BED.gap;
@@ -214,7 +259,7 @@ function placed(shape: PlacedShape, lots: LotSummary[]): Local {
     width: right - minX + 2 * BED.margin,
     depth: maxZ - minZ + 2 * BED.margin,
     beds: beds.map(centre),
-    floors: shape.floors.map(centre),
+    floors: floors.map(centre),
     features: shape.features.map(centre),
   };
 }
