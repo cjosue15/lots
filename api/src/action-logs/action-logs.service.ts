@@ -20,8 +20,11 @@ import { diffSnapshots, type LogSnapshot } from './log-changes.js';
 import {
   type CreateActionLog,
   detailSchemas,
+  type ProductInput,
   type UpdateActionLog,
 } from './action-logs.schemas.js';
+
+const NO_PRODUCTS = 'Esta acción no lleva productos';
 
 @Injectable()
 export class ActionLogsService {
@@ -49,6 +52,7 @@ export class ActionLogsService {
     let phaseId: string | null;
     let actionId: string | null = null;
     let details: Prisma.JsonObject | null = null;
+    let products: ProductInput[] = [];
 
     if (body.actionId) {
       const action = await this.prisma.action.findUnique({ where: { id: body.actionId } });
@@ -59,8 +63,12 @@ export class ActionLogsService {
       name = action.name;
       phaseId = action.phaseId;
       details = this.parseDetails(action.detailType, body.details);
+      products = this.checkProducts(action.detailType, body.products);
     } else {
       // "Otra acción": free name, optional phase, no extra fields.
+      if (body.products?.length) {
+        throw new BadRequestException(NO_PRODUCTS);
+      }
       name = body.name!;
       phaseId = body.phaseId ? await this.assertPhase(body.phaseId) : null;
     }
@@ -75,6 +83,7 @@ export class ActionLogsService {
         details: details ?? Prisma.DbNull,
         notes: body.notes ?? null,
         userId: user.id,
+        products: { create: products.map((product, order) => ({ ...product, order })) },
       },
       select: actionLogSelect,
     });
@@ -85,7 +94,14 @@ export class ActionLogsService {
   async update(id: string, body: UpdateActionLog, user: AuthUser): Promise<ActionLogResponse> {
     const log = await this.prisma.actionLog.findUnique({
       where: { id },
-      include: { action: true, cycle: true },
+      include: {
+        action: true,
+        cycle: true,
+        products: {
+          orderBy: { order: 'asc' },
+          select: { product: true, dose: true, doseUnit: true, method: true },
+        },
+      },
     });
     if (!log) {
       throw new NotFoundException('El registro no existe');
@@ -99,6 +115,7 @@ export class ActionLogsService {
       phaseId: log.phaseId,
       date: fromDbDate(log.date),
       details: log.details,
+      products: log.products,
       notes: log.notes,
     };
     const after = { ...before };
@@ -112,7 +129,13 @@ export class ActionLogsService {
       if (body.details !== undefined) {
         after.details = this.parseDetails(log.action.detailType, body.details);
       }
+      if (body.products !== undefined) {
+        after.products = this.checkProducts(log.action.detailType, body.products);
+      }
     } else {
+      if (body.products?.length) {
+        throw new BadRequestException(NO_PRODUCTS);
+      }
       if (body.name !== undefined) after.name = body.name;
       if (body.phaseId !== undefined) {
         after.phaseId = body.phaseId === null ? null : await this.assertPhase(body.phaseId);
@@ -150,6 +173,13 @@ export class ActionLogsService {
           date: toDbDate(after.date),
           details: (after.details as Prisma.InputJsonValue | null) ?? Prisma.DbNull,
           notes: after.notes,
+          products:
+            after.products === before.products
+              ? undefined
+              : {
+                  deleteMany: {},
+                  create: (after.products ?? []).map((product, order) => ({ ...product, order })),
+                },
         },
         select: actionLogSelect,
       }),
@@ -213,6 +243,17 @@ export class ActionLogsService {
       Object.entries(result.data).filter(([, value]) => value !== undefined),
     ) as Prisma.JsonObject;
     return Object.keys(filled).length ? filled : null;
+  }
+
+  /** Products are only for APPLICATION actions. */
+  private checkProducts(type: DetailType, products: ProductInput[] | undefined): ProductInput[] {
+    if (!products?.length) {
+      return [];
+    }
+    if (type !== DetailType.APPLICATION) {
+      throw new BadRequestException(NO_PRODUCTS);
+    }
+    return products;
   }
 
   private async assertPhase(phaseId: string): Promise<string> {

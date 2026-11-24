@@ -30,4 +30,14 @@ describe('diffSnapshots', () => {
       { field: 'details', before: { humidity: '60%' }, after: { humidity: '70%' } },
     ]);
   });
+
+  it('detects changes in products, and ignores old changes without them', () => {
+    const bayfolan = { product: 'Bayfolan', dose: 250, doseUnit: 'ML' as const, method: null };
+    const before = { ...base, products: [bayfolan] };
+    const after = { ...base, products: [bayfolan, { ...bayfolan, product: 'Urea' }] };
+    expect(diffSnapshots(before, after, label)).toEqual([
+      { field: 'products', before: [bayfolan], after: after.products },
+    ]);
+    expect(diffSnapshots(base, { ...base }, label)).toEqual([]);
+  });
 });

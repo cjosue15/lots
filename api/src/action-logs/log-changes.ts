@@ -1,4 +1,5 @@
 import type { Prisma } from '../generated/prisma/client.js';
+import type { ProductInput } from './action-logs.schemas.js';
 
 /** Snapshot stored in ActionLogChange.before / after. */
 export interface LogSnapshot {
@@ -6,10 +7,12 @@ export interface LogSnapshot {
   phaseId: string | null;
   date: string;
   details: Prisma.JsonValue;
+  /** Missing in changes saved before products had their own table. */
+  products?: ProductInput[];
   notes: string | null;
 }
 
-export type ChangedField = 'name' | 'phase' | 'date' | 'details' | 'notes';
+export type ChangedField = 'name' | 'phase' | 'date' | 'details' | 'products' | 'notes';
 
 export interface FieldChange {
   field: ChangedField;
@@ -22,6 +25,7 @@ const FIELDS: ReadonlyArray<[keyof LogSnapshot, ChangedField]> = [
   ['phaseId', 'phase'],
   ['date', 'date'],
   ['details', 'details'],
+  ['products', 'products'],
   ['notes', 'notes'],
 ];
 
@@ -36,8 +40,8 @@ export function diffSnapshots(
 ): FieldChange[] {
   const changes: FieldChange[] = [];
   for (const [key, field] of FIELDS) {
-    const a = before[key] ?? null;
-    const b = after[key] ?? null;
+    const a = (before[key] ?? null) as Prisma.JsonValue;
+    const b = (after[key] ?? null) as Prisma.JsonValue;
     if (JSON.stringify(a) === JSON.stringify(b)) continue;
     if (field === 'phase') {
       changes.push({

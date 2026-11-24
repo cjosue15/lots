@@ -17,10 +17,21 @@ enum CycleStatus {
 /// Which optional extra fields the form shows for an action (all optional).
 enum DetailType {
   NONE
-  APPLICATION // product, dose
+  APPLICATION // products (ActionLogProduct)
   IRRIGATION // humidity
   PEST_CHECK // result, chemicalApplied
   FERTILIZER_EVAL // result: WORKED | CHANGE
+}
+
+enum DoseUnit {
+  MG
+  ML
+}
+
+/// How a product was applied: through the irrigation system or sprayed.
+enum ApplicationMethod {
+  SYSTEM
+  SPRAY
 }
 
 model Greenhouse {
@@ -101,13 +112,30 @@ model ActionLog {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  cycle   Cycle             @relation(fields: [cycleId], references: [id])
-  action  Action?           @relation(fields: [actionId], references: [id])
-  phase   Phase?            @relation(fields: [phaseId], references: [id])
-  user    User              @relation(fields: [userId], references: [id])
-  changes ActionLogChange[]
+  cycle    Cycle              @relation(fields: [cycleId], references: [id])
+  action   Action?            @relation(fields: [actionId], references: [id])
+  phase    Phase?             @relation(fields: [phaseId], references: [id])
+  user     User               @relation(fields: [userId], references: [id])
+  changes  ActionLogChange[]
+  products ActionLogProduct[]
 
   @@index([cycleId, date])
+}
+
+/// Products used in an APPLICATION log, in the order they were entered.
+model ActionLogProduct {
+  id          String             @id @default(uuid())
+  actionLogId String
+  order       Int
+  product     String
+  dose        Float?
+  /// Set whenever dose is.
+  doseUnit    DoseUnit?
+  method      ApplicationMethod?
+
+  actionLog ActionLog @relation(fields: [actionLogId], references: [id], onDelete: Cascade)
+
+  @@index([actionLogId])
 }
 
 /// Audit trail: one row per edit, written in the same transaction.

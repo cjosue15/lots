@@ -1,4 +1,4 @@
-import type { Prisma } from '../generated/prisma/client.js';
+import type { ApplicationMethod, DoseUnit, Prisma } from '../generated/prisma/client.js';
 import type { AuthUser } from '../auth/auth-user.js';
 import { fromDbDate } from '../common/peru-date.js';
 import type { FieldChange } from './log-changes.js';
@@ -12,6 +12,10 @@ export const actionLogSelect = {
   date: true,
   details: true,
   notes: true,
+  products: {
+    orderBy: { order: 'asc' },
+    select: { product: true, dose: true, doseUnit: true, method: true },
+  },
   createdAt: true,
   updatedAt: true,
   phase: { select: { id: true, order: true, name: true } },
@@ -31,6 +35,13 @@ export interface ActionLogResponse {
   detailType: string | null;
   date: string;
   details: Prisma.JsonValue;
+  /** APPLICATION logs only; empty otherwise. */
+  products: {
+    product: string;
+    dose: number | null;
+    doseUnit: DoseUnit | null;
+    method: ApplicationMethod | null;
+  }[];
   notes: string | null;
   user: { id: string; displayName: string };
   edited: boolean;
@@ -50,6 +61,7 @@ export function toActionLogResponse(row: ActionLogRow, viewer: AuthUser): Action
     detailType: row.action?.detailType ?? null,
     date: fromDbDate(row.date),
     details: row.details,
+    products: row.products,
     notes: row.notes,
     user: row.user,
     edited: row._count.changes > 0,
