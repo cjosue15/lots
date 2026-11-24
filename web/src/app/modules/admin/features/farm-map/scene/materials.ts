@@ -53,6 +53,8 @@ export const COLORS = {
   adobe: 0xc8ad86,
   door: 0x5a4632,
   tin: 0xa7adaf,
+  /** Shed roof: green sheeting. */
+  shedRoof: 0x3f7a45,
   // Worker and the things it carries.
   skin: 0x8d5a3b,
   pants: 0x3b4a5e,

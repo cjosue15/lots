@@ -5,7 +5,8 @@ import { COLORS, type SceneAssets } from './materials';
 
 /**
  * A greenhouse's ground: its covered floors and the things between lots
- * (pool, plants, hut). Roofs and mesh are left out so the lots stay visible.
+ * (pool, plants, hut, shed). The greenhouses' own roofs and mesh are left out
+ * so the lots stay visible.
  * Positions are in world coordinates.
  */
 export function buildGreenhouse(assets: SceneAssets, gh: GreenhousePlacement): THREE.Group {
@@ -43,7 +44,9 @@ function buildFeature(assets: SceneAssets, feature: Feature, seed: number): THRE
     const rand = random(seed);
     const shrub = assets.geometry('shrub', () => new THREE.IcosahedronGeometry(1, 1));
     const greens = [COLORS.shrub, COLORS.leaf, COLORS.stem];
-    for (let i = 0; i < 14; i++) {
+    // About as dense whatever the patch's size (14 on El Dorado's).
+    const count = Math.max(14, Math.round(w * d * 1.3));
+    for (let i = 0; i < count; i++) {
       const size = 0.45 + rand() * 0.55;
       const bush = new THREE.Mesh(shrub, assets.material(greens[i % greens.length]));
       bush.scale.set(size, size * (0.8 + rand() * 0.5), size);
@@ -51,6 +54,18 @@ function buildFeature(assets: SceneAssets, feature: Feature, seed: number): THRE
       bush.castShadow = true;
       group.add(bush);
     }
+  } else if (feature.kind === 'shed') {
+    // Open shed: wooden posts at the corners under a flat green roof.
+    const height = 2.4;
+    for (const sx of [-1, 1]) {
+      for (const sz of [-1, 1]) {
+        const [px, pz] = [(sx * (w - 0.2)) / 2, (sz * (d - 0.2)) / 2];
+        group.add(block(assets, [0.12, height, 0.12], [px, height / 2, pz], COLORS.wood));
+      }
+    }
+    group.add(
+      block(assets, [w, 0.08, d], [0, height + 0.04, 0], COLORS.shedRoof, { roughness: 0.7 }),
+    );
   } else {
     // Guard's hut: adobe walls, a door and a sloped tin roof.
     const height = 2.2;
