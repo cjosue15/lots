@@ -52,8 +52,8 @@ function describeDetailsChange(before: unknown, after: unknown): ChangeLine[] {
   const b = (after ?? {}) as Record<string, unknown>;
   const lines: ChangeLine[] = [];
   for (const [key, label] of Object.entries(DETAIL_LABELS)) {
-    const from = describeDetailValue(key, a[key]);
-    const to = describeDetailValue(key, b[key]);
+    const from = describeDetailValue(key, a);
+    const to = describeDetailValue(key, b);
     if (from === to) continue;
     lines.push({ label, before: from ?? 'Vacío', after: to ?? 'Vacío', wasEmpty: from === null });
   }
