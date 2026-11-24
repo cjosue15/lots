@@ -1,6 +1,10 @@
 import { FERTILIZER_RESULTS } from './action.model';
+import type { ActionLog, ApplicationMethod, ApplicationProduct, DoseUnit } from './lot.model';
 
-/** Detail keys in form order, with their Spanish label. */
+/**
+ * Detail keys in form order, with their Spanish label. product, dose and
+ * method only appear in logs saved before products had their own table.
+ */
 export const DETAIL_LABELS: Record<string, string> = {
   product: 'Producto',
   dose: 'Dosis',
@@ -11,29 +15,39 @@ export const DETAIL_LABELS: Record<string, string> = {
 };
 
 /** Units a dose can be measured in, with the label the form shows. */
-export const DOSE_UNITS = {
+export const DOSE_UNITS: Record<DoseUnit, string> = {
   ML: 'Mililitros',
   MG: 'Miligramos',
-} as const;
-export type DoseUnit = keyof typeof DOSE_UNITS;
+};
 
 /** How a product was applied, with its label. */
-export const APPLICATION_METHODS = {
+export const APPLICATION_METHODS: Record<ApplicationMethod, string> = {
   SYSTEM: 'Por sistema',
   SPRAY: 'Fumigación',
-} as const;
-export type ApplicationMethod = keyof typeof APPLICATION_METHODS;
+};
 
 const DOSE_SYMBOLS: Record<DoseUnit, string> = { ML: 'ml', MG: 'mg' };
 
 /** "250 ml": the amount with its unit's symbol. Older logs kept the dose as free text. */
-function describeDose(details: Record<string, unknown>): string | null {
-  const { dose, doseUnit } = details;
+function describeDose({ dose, doseUnit }: { dose?: unknown; doseUnit?: unknown }): string | null {
   if (typeof dose === 'string') return dose || null;
   if (typeof dose !== 'number') return null;
   const amount = dose.toLocaleString('es-PE', { maximumFractionDigits: 3 });
   const symbol = DOSE_SYMBOLS[doseUnit as DoseUnit];
   return symbol ? `${amount} ${symbol}` : amount;
+}
+
+/** "Bayfolan: 250 ml, por sistema". */
+export function describeProduct(p: ApplicationProduct): string {
+  const dose = describeDose(p);
+  const method = p.method ? APPLICATION_METHODS[p.method].toLowerCase() : null;
+  const extra = [dose, method].filter(Boolean).join(', ');
+  return extra ? `${p.product}: ${extra}` : p.product;
+}
+
+/** Everything a log recorded beyond its name: products first, then details. */
+export function describeLogDetails(log: Pick<ActionLog, 'details' | 'products'>): string[] {
+  return [...log.products.map(describeProduct), ...describeDetails(log.details)];
 }
 
 /**

@@ -1,4 +1,12 @@
-import type { DetailType } from './lot.model';
+import type { ApplicationMethod, DetailType, DoseUnit } from './lot.model';
+
+/** A product as the form sends it; empty fields are left out. */
+export interface ProductInput {
+  product: string;
+  dose?: number;
+  doseUnit?: DoseUnit;
+  method?: ApplicationMethod;
+}
 
 export interface TemplateAction {
   id: string;
@@ -17,6 +25,8 @@ export interface CreateActionLog {
   phaseId?: string;
   date?: string;
   details?: Record<string, unknown>;
+  /** APPLICATION actions only. */
+  products?: ProductInput[];
   notes?: string;
 }
 
@@ -31,5 +41,7 @@ export interface UpdateActionLog {
   phaseId?: string | null;
   date?: string;
   details?: Record<string, unknown> | null;
+  /** `[]` removes every product. */
+  products?: ProductInput[];
   notes?: string | null;
 }

@@ -1,4 +1,24 @@
-import { describeDetails } from './details';
+import { describeDetails, describeLogDetails, describeProduct } from './details';
+
+describe('describeProduct', () => {
+  it('joins the dose and the method that were filled', () => {
+    const p = { product: 'Bayfolan', dose: null, doseUnit: null, method: null } as const;
+    expect(describeProduct(p)).toBe('Bayfolan');
+    expect(describeProduct({ ...p, dose: 250, doseUnit: 'ML' })).toBe('Bayfolan: 250 ml');
+    expect(describeProduct({ ...p, dose: 1.5, doseUnit: 'MG', method: 'SPRAY' })).toBe(
+      'Bayfolan: 1.5 mg, fumigación',
+    );
+  });
+
+  it('lists products before the other details', () => {
+    expect(
+      describeLogDetails({
+        products: [{ product: 'Urea', dose: null, doseUnit: null, method: 'SYSTEM' }],
+        details: { humidity: '60%' },
+      }),
+    ).toEqual(['Urea: por sistema', 'Humedad: 60%']);
+  });
+});
 
 describe('describeDetails', () => {
   it('lists only the filled fields, in Spanish', () => {

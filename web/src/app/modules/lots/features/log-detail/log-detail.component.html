@@ -37,7 +37,7 @@
           <dt class="text-muted-foreground">Fase</dt>
           <dd>{{ log.phase ? log.phase.order + '. ' + log.phase.name : 'Acción general' }}</dd>
 
-          @if (describeDetails(log.details); as lines) {
+          @if (describeLogDetails(log); as lines) {
             @if (lines.length) {
               <dt class="text-muted-foreground">Detalles</dt>
               <dd>

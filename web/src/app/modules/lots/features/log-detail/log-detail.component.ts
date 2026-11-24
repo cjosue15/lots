@@ -8,7 +8,7 @@ import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
 import { formatDateTime, formatDay } from '../../../../shared/peru-date';
 import { describeChange } from '../../models/changes';
-import { describeDetails } from '../../models/details';
+import { describeLogDetails } from '../../models/details';
 import { LotsService } from '../../services/lots.service';
 
 @Component({
@@ -46,5 +46,5 @@ export class LogDetailComponent {
 
   protected readonly formatDay = formatDay;
   protected readonly formatDateTime = formatDateTime;
-  protected readonly describeDetails = describeDetails;
+  protected readonly describeLogDetails = describeLogDetails;
 }

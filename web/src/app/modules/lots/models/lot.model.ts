@@ -1,5 +1,18 @@
 export type DetailType = 'NONE' | 'APPLICATION' | 'IRRIGATION' | 'PEST_CHECK' | 'FERTILIZER_EVAL';
 
+export type DoseUnit = 'MG' | 'ML';
+/** How a product was applied: through the irrigation system or sprayed. */
+export type ApplicationMethod = 'SYSTEM' | 'SPRAY';
+
+/** One product of an APPLICATION log. */
+export interface ApplicationProduct {
+  product: string;
+  dose: number | null;
+  /** Set whenever dose is. */
+  doseUnit: DoseUnit | null;
+  method: ApplicationMethod | null;
+}
+
 export interface PhaseRef {
   order: number;
   name: string;
@@ -37,6 +50,8 @@ export interface ActionLog {
   detailType: DetailType | null;
   date: string;
   details: Record<string, unknown> | null;
+  /** APPLICATION logs only; empty otherwise. */
+  products: ApplicationProduct[];
   notes: string | null;
   user: { id: string; displayName: string };
   edited: boolean;
@@ -65,7 +80,7 @@ export interface LotRef {
   greenhouse: { id: string; name: string };
 }
 
-export type ChangedField = 'name' | 'phase' | 'date' | 'details' | 'notes';
+export type ChangedField = 'name' | 'phase' | 'date' | 'details' | 'products' | 'notes';
 
 export interface FieldChange {
   field: ChangedField;

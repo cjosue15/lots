@@ -4,7 +4,7 @@ import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideChevronLeft } from '@ng-icons/lucide';
+import { lucideChevronLeft, lucidePlus } from '@ng-icons/lucide';
 import { toast } from '@spartan-ng/brain/sonner';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmCardImports } from '@spartan-ng/helm/card';
@@ -21,16 +21,21 @@ import {
   type ActionTemplate,
   type CreateActionLog,
   FERTILIZER_RESULTS,
+  type ProductInput,
   type TemplateAction,
   type UpdateActionLog,
 } from '../../models/action.model';
 import {
-  APPLICATION_METHODS,
-  type ApplicationMethod,
-  DOSE_UNITS,
-  type DoseUnit,
-} from '../../models/details';
-import type { ActionLogDetail, DetailType, LotRef } from '../../models/lot.model';
+  ProductFieldsComponent,
+  productForm,
+  readProduct,
+} from '../../components/product-fields.component';
+import type {
+  ActionLogDetail,
+  ApplicationProduct,
+  DetailType,
+  LotRef,
+} from '../../models/lot.model';
 import { LotsService } from '../../services/lots.service';
 
 /** Value of the "Otra acción" option in the action select. */
@@ -60,8 +65,9 @@ interface FormContext {
     HlmSpinnerImports,
     HlmTextareaImports,
     DateFieldComponent,
+    ProductFieldsComponent,
   ],
-  providers: [provideIcons({ lucideChevronLeft })],
+  providers: [provideIcons({ lucideChevronLeft, lucidePlus })],
   templateUrl: './register-log.component.html',
 })
 export class RegisterLogComponent {
@@ -94,8 +100,6 @@ export class RegisterLogComponent {
 
   protected readonly OTHER = OTHER;
   protected readonly fertilizerResults = Object.entries(FERTILIZER_RESULTS);
-  protected readonly doseUnits = Object.entries(DOSE_UNITS);
-  protected readonly applicationMethods = Object.entries(APPLICATION_METHODS);
   protected readonly today = todayInPeru();
   protected readonly saving = signal(false);
 
@@ -104,10 +108,7 @@ export class RegisterLogComponent {
     otherName: ['', Validators.maxLength(120)],
     otherPhaseId: [''],
     date: [this.today, Validators.required],
-    product: [''],
-    dose: [null as number | null, Validators.min(0.001)],
-    doseUnit: ['ML' as DoseUnit],
-    method: ['' as ApplicationMethod | ''],
+    products: this.fb.nonNullable.array([productForm(this.fb.nonNullable)]),
     humidity: [''],
     result: [''],
     chemicalApplied: [''],
@@ -142,9 +143,6 @@ export class RegisterLogComponent {
     return phase ? `${phase.order}. ${phase.name}` : 'Sin fase';
   };
   protected readonly yesNoLabel = (value: string) => (value === 'yes' ? 'Sí' : value === 'no' ? 'No' : '');
-  protected readonly doseUnitLabel = (value: string) => DOSE_UNITS[value as DoseUnit] ?? '';
-  protected readonly methodLabel = (value: string) =>
-    APPLICATION_METHODS[value as ApplicationMethod] ?? '';
   protected readonly fertilizerLabel = (value: string) =>
     FERTILIZER_RESULTS[value as keyof typeof FERTILIZER_RESULTS] ?? '';
 
@@ -156,6 +154,14 @@ export class RegisterLogComponent {
       'NONE',
   );
 
+  protected addProduct(): void {
+    this.form.controls.products.push(productForm(this.fb.nonNullable));
+  }
+
+  protected removeProduct(index: number): void {
+    this.form.controls.products.removeAt(index);
+  }
+
   protected async submit(): Promise<void> {
     const ctx = this.data.value();
     if (!ctx?.cycle) return;
@@ -164,6 +170,8 @@ export class RegisterLogComponent {
     if (this.isOther() && !value.otherName.trim()) {
       this.form.controls.otherName.setErrors({ required: true });
     }
+    // Also flags rows with a dose or a method but no name.
+    const products = this.readProducts();
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -172,11 +180,13 @@ export class RegisterLogComponent {
     this.saving.set(true);
     try {
       if (ctx.log) {
-        await firstValueFrom(this.lotsService.updateLog(ctx.log.id, this.buildUpdate()));
+        await firstValueFrom(
+          this.lotsService.updateLog(ctx.log.id, this.buildUpdate(products)),
+        );
         toast.success('Cambios guardados');
         await this.router.navigate(['/logs', ctx.log.id]);
       } else {
-        await firstValueFrom(this.lotsService.createLog(ctx.cycle.id, this.buildBody()));
+        await firstValueFrom(this.lotsService.createLog(ctx.cycle.id, this.buildBody(products)));
         toast.success('Registro guardado');
         await this.router.navigate(['/lots', ctx.lot.id]);
       }
@@ -215,31 +225,56 @@ export class RegisterLogComponent {
     const details = log.details ?? {};
     const text = (key: string) => (typeof details[key] === 'string' ? (details[key] as string) : '');
     const chemical = details['chemicalApplied'];
-    const dose = details['dose'];
-    const doseUnit = details['doseUnit'];
-    const method = details['method'];
 
     this.form.reset({
       actionId: log.actionId ?? OTHER,
       otherName: log.actionId ? '' : log.name,
       otherPhaseId: log.actionId ? '' : (log.phase?.id ?? ''),
       date: log.date,
-      product: text('product'),
-      // Older logs kept the dose as free text: keep its number if it starts with one.
-      dose: typeof dose === 'number' ? dose : Number.parseFloat(text('dose').replace(',', '.')) || null,
-      doseUnit: doseUnit === 'MG' || doseUnit === 'ML' ? doseUnit : 'ML',
-      method: method === 'SYSTEM' || method === 'SPRAY' ? method : '',
       humidity: text('humidity'),
       result: log.detailType === 'PEST_CHECK' ? text('result') : '',
       chemicalApplied: typeof chemical === 'boolean' ? (chemical ? 'yes' : 'no') : '',
       fertilizerResult: log.detailType === 'FERTILIZER_EVAL' ? text('result') : '',
       notes: log.notes ?? '',
     });
+    const products = log.products.length ? log.products : this.legacyProduct(details);
+    this.form.setControl(
+      'products',
+      this.fb.nonNullable.array(
+        (products.length ? products : [undefined]).map((p) => productForm(this.fb.nonNullable, p)),
+      ),
+    );
     this.form.controls.actionId.disable();
   }
 
+  /**
+   * Logs saved before products had their own table kept one product in
+   * `details`. Editing one moves it into the list (and out of `details`).
+   */
+  private legacyProduct(details: Record<string, unknown>): ApplicationProduct[] {
+    const { product, dose, doseUnit, method } = details;
+    if (typeof product !== 'string' || !product) return [];
+    const amount = typeof dose === 'number' ? dose : Number.parseFloat(String(dose ?? '').replace(',', '.'));
+    return [
+      {
+        product,
+        dose: Number.isFinite(amount) && amount > 0 ? amount : null,
+        doseUnit: doseUnit === 'MG' ? 'MG' : 'ML',
+        method: method === 'SYSTEM' || method === 'SPRAY' ? method : null,
+      },
+    ];
+  }
+
+  /** Filled product rows, in order; empty rows are skipped. */
+  private readProducts(): ProductInput[] {
+    if (this.detailType() !== 'APPLICATION') return [];
+    return this.form.controls.products.controls
+      .map(readProduct)
+      .filter((p): p is ProductInput => p !== null);
+  }
+
   /** PATCH body: every editable field, `null` clears it. */
-  private buildUpdate(): UpdateActionLog {
+  private buildUpdate(products: ProductInput[]): UpdateActionLog {
     const v = this.form.getRawValue();
     const body: UpdateActionLog = { date: v.date, notes: v.notes.trim() || null };
     if (this.isOther()) {
@@ -247,12 +282,13 @@ export class RegisterLogComponent {
       body.phaseId = v.otherPhaseId || null;
     } else if (this.detailType() !== 'NONE') {
       body.details = this.buildDetails() ?? null;
+      if (this.detailType() === 'APPLICATION') body.products = products;
     }
     return body;
   }
 
   /** Sends only the fields of the selected action; empty fields are left out. */
-  private buildBody(): CreateActionLog {
+  private buildBody(products: ProductInput[]): CreateActionLog {
     const v = this.form.getRawValue();
     const body: CreateActionLog = { date: v.date, notes: v.notes.trim() || undefined };
 
@@ -264,6 +300,7 @@ export class RegisterLogComponent {
 
     body.actionId = v.actionId;
     body.details = this.buildDetails();
+    if (products.length) body.products = products;
     return body;
   }
 
@@ -272,14 +309,6 @@ export class RegisterLogComponent {
     const v = this.form.getRawValue();
     const details: Record<string, unknown> = {};
     switch (this.detailType()) {
-      case 'APPLICATION':
-        details['product'] = v.product;
-        if (v.dose !== null) {
-          details['dose'] = v.dose;
-          details['doseUnit'] = v.doseUnit;
-        }
-        if (v.method) details['method'] = v.method;
-        break;
       case 'IRRIGATION':
         details['humidity'] = v.humidity;
         break;

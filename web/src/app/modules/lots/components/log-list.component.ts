@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideChevronRight } from '@ng-icons/lucide';
 import { relativeDay } from '../../../shared/peru-date';
-import { describeDetails } from '../models/details';
+import { describeLogDetails } from '../models/details';
 import type { ActionLog } from '../models/lot.model';
 
 interface DayGroup {
@@ -34,7 +34,7 @@ interface DayGroup {
                     {{ log.phase ? 'Fase ' + log.phase.order : 'General' }}
                   </span>
                 </span>
-                @for (line of describeDetails(log.details); track line) {
+                @for (line of describeLogDetails(log); track line) {
                   <span class="block text-sm">{{ line }}</span>
                 }
                 @if (log.notes) {
@@ -78,5 +78,5 @@ export class LogListComponent {
   });
 
   protected readonly relativeDay = relativeDay;
-  protected readonly describeDetails = describeDetails;
+  protected readonly describeLogDetails = describeLogDetails;
 }

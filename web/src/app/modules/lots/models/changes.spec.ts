@@ -18,6 +18,17 @@ describe('describeChange', () => {
     ]);
   });
 
+  it('shows the product lists before and after', () => {
+    const urea = { product: 'Urea', dose: 2, doseUnit: 'MG', method: null };
+    expect(
+      describeChange([
+        { field: 'products', before: [], after: [urea, { ...urea, product: 'Bayfolan' }] },
+      ]),
+    ).toEqual([
+      { label: 'Productos', before: 'Vacío', after: 'Urea: 2 mg; Bayfolan: 2 mg', wasEmpty: true },
+    ]);
+  });
+
   it('shows a change of dose unit as a change of dose', () => {
     expect(
       describeChange([

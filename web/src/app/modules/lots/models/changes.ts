@@ -1,12 +1,13 @@
 import { formatDay } from '../../../shared/peru-date';
-import { DETAIL_LABELS, describeDetailValue } from './details';
-import type { ChangedField, FieldChange } from './lot.model';
+import { DETAIL_LABELS, describeDetailValue, describeProduct } from './details';
+import type { ApplicationProduct, ChangedField, FieldChange } from './lot.model';
 
 export const FIELD_LABELS: Record<ChangedField, string> = {
   name: 'Acción',
   phase: 'Fase',
   date: 'Fecha',
   details: 'Detalles',
+  products: 'Productos',
   notes: 'Notas',
 };
 
@@ -36,6 +37,7 @@ export interface ChangeLine {
 export function describeChange(fields: FieldChange[]): ChangeLine[] {
   return fields.flatMap(({ field, before, after }) => {
     if (field === 'details') return describeDetailsChange(before, after);
+    if (field === 'products') return [describeProductsChange(before, after)];
     return [
       {
         label: FIELD_LABELS[field],
@@ -45,6 +47,21 @@ export function describeChange(fields: FieldChange[]): ChangeLine[] {
       },
     ];
   });
+}
+
+/** The whole list on each side: "Bayfolan: 250 ml; Urea". */
+function describeProductsChange(before: unknown, after: unknown): ChangeLine {
+  const list = (value: unknown) =>
+    Array.isArray(value) && value.length
+      ? (value as ApplicationProduct[]).map(describeProduct).join('; ')
+      : null;
+  const from = list(before);
+  return {
+    label: FIELD_LABELS.products,
+    before: from ?? 'Vacío',
+    after: list(after) ?? 'Vacío',
+    wasEmpty: from === null,
+  };
 }
 
 function describeDetailsChange(before: unknown, after: unknown): ChangeLine[] {
