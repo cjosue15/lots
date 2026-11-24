@@ -375,7 +375,7 @@ Las facturas de compra **no** se registran aquí: ya las lleva otra aplicación.
 | Modelo (concepto) | Campos |
 |---|---|
 | `ProductCategory` (categoría) | id, name (único), active |
-| `Product` (producto) | id, name (único), categoryId, unit (LT/KG/GR), minStock, active |
+| `Product` (producto) | id, name (único), categoryId, unit (L/KG/G, del enum `DoseUnit`), minStock, active |
 | `StockMovement` (movimiento) | id, productId, date, quantity (positiva entra, negativa sale, en la unidad del producto), type (INITIAL/ENTRY/APPLICATION/ADJUSTMENT), unitCost (obligatorio en INITIAL y ENTRY, vacío en los demás), actionLogProductId, reason, userId, createdAt |
 
 `ActionLogProduct` (§8) suma `productId`. El `product` en texto se queda como copia del nombre, igual que `ActionLog.name`.
