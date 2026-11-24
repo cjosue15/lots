@@ -176,9 +176,10 @@ Página `/admin/map` (pestaña "Vista 3D"), solo para el admin, hecha con three.
 - **Carga bajo demanda:** al entrar no se carga nada en 3D. Primero se elige un invernadero, en tarjetas con su número de lotes, cuántos tienen registros hoy y cuántos llevan 3 días o más sin registros. Recién entonces se descarga three.js y se construye solo ese invernadero. "Todos" (o "Ver todos juntos") construye los tres, pero solo si se elige.
 - **Distribución (`layout.ts`):**
   - Sin techos, arcos, paredes ni malla, porque tapaban los lotes. Cada invernadero es solo su piso claro con los lotes encima.
-  - **Bungalows:** esquemático, con lotes del mismo tamaño ordenados por número, hasta 6 por fila.
   - **El Dorado** sigue el croquis de la granja: tres lotes separados en una columna, con el 3 al fondo y el 1 adelante, cada uno con su propio piso. Entre el 2 y el 3 está la choza del guardián. Entre el 1 y el 2 están la piscina, pegada al 2, y un cuadrado de plantas, pegado al 1.
   - **Carmen Alto** sigue su croquis, con lotes del tamaño de los de El Dorado. Un invernadero grande con los lotes 1 a 6 en dos columnas: el 1 y el 2 al fondo, el 5 y el 6 adelante. A su derecha, pegado al invernadero, un cobertizo de techo verde junto a la mitad del fondo del 2; más afuera, una franja sin lote con arbolitos al lado del 2 y el 4, y adelante el lote 7, a cielo abierto, al lado del 6. Detrás del invernadero, a cielo abierto, el 8 y luego el 9, sobre la columna del 2, con el reservorio de agua al lado del 8. Los lotes a cielo abierto no llevan piso.
+  - **Bungalows** sigue su croquis, con lotes del tamaño de los de El Dorado y cada uno con su propio piso. Al fondo, del 12 al 8 de izquierda a derecha; en medio, del 7 al 4; y adelante del 4, en columna, el 3, el 2 y el 1. Entre las dos filas, el almacén debajo del 9, a su derecha los dos camiones (`scene/truck.ts`: un Hyundai H100 blanco con barandas bajas y un Dongfeng DF-815 azul con barandas altas de madera y ruedas traseras dobles) y la oficina más a la derecha.
+  - **Otros invernaderos sin croquis:** esquemáticos, con lotes del mismo tamaño ordenados por número, hasta 6 por fila.
   - **No se copian las medidas reales:** los lotes de El Dorado son del mismo orden de tamaño que los demás, para que en "Todos" se vean a una escala parecida.
   - **Otro invernadero con distribución real:** se agrega en `SHAPES` (`layout.ts`) por nombre de invernadero, a partir de su croquis.
 - **Cada lote muestra su fase**, con geometría simple generada por código (sin modelos externos):
@@ -255,7 +256,6 @@ Página `/admin/map` (pestaña "Vista 3D"), solo para el admin, hecha con three.
 - **Accesibilidad:** la misma información como lista ("Ver como lista"), también cuando el navegador no soporta WebGL. Con "reducir movimiento" la cámara salta en vez de deslizarse y los trabajadores quedan quietos en su pose.
 - **Después (v2):**
   - Línea de tiempo para reproducir el avance día a día (necesita un endpoint con la fase por día).
-  - Distribución real de Bungalows cuando haya croquis.
   - Que el código de la acción también cambie el dibujo del lote, por ejemplo que se vean las cintas después de "Instalar la cinta de riego" aunque la fase sea la misma.
 
 ## 11. Tecnología e infraestructura
