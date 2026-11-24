@@ -105,6 +105,9 @@ const GENERAL_ACTIONS: ActionSeed[] = [
   ['control-calidad', 'Control de calidad', NONE],
 ];
 
+/** Initial product categories (PLAN §14); the admin can add more. */
+const PRODUCT_CATEGORIES = ['Químico', 'Fertilizante'];
+
 /**
  * Creates the action if it does not exist yet (phaseId can be null, so no
  * upsert); an existing one only gets its code.
@@ -155,6 +158,10 @@ async function main() {
 
   for (const [i, action] of GENERAL_ACTIONS.entries()) {
     await ensureAction(null, action, i + 1);
+  }
+
+  for (const name of PRODUCT_CATEGORIES) {
+    await prisma.productCategory.upsert({ where: { name }, update: {}, create: { name } });
   }
 
   console.log('Seed completed');

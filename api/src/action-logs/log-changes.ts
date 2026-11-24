@@ -1,5 +1,12 @@
-import type { Prisma } from '../generated/prisma/client.js';
-import type { ProductInput } from './action-logs.schemas.js';
+import type { ApplicationMethod, DoseUnit, Prisma } from '../generated/prisma/client.js';
+
+/** An applied product as history shows it (by name). */
+export interface ProductSnapshot {
+  product: string;
+  dose: number | null;
+  doseUnit: DoseUnit | null;
+  method: ApplicationMethod | null;
+}
 
 /** Snapshot stored in ActionLogChange.before / after. */
 export interface LogSnapshot {
@@ -8,7 +15,7 @@ export interface LogSnapshot {
   date: string;
   details: Prisma.JsonValue;
   /** Missing in changes saved before products had their own table. */
-  products?: ProductInput[];
+  products?: ProductSnapshot[];
   notes: string | null;
 }
 

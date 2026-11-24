@@ -23,9 +23,22 @@ enum DetailType {
   FERTILIZER_EVAL // result: WORKED | CHANGE
 }
 
+/// Units for doses and stock. Products are measured in L, KG or G; a dose can
+/// use any unit of the same kind (volume: L, ML; weight: KG, G, MG).
 enum DoseUnit {
   MG
   ML
+  L
+  KG
+  G
+}
+
+/// INITIAL: stock counted when the product was created (its start date).
+enum StockMovementType {
+  INITIAL
+  ENTRY
+  APPLICATION
+  ADJUSTMENT
 }
 
 /// How a product was applied: through the irrigation system or sprayed.
@@ -132,10 +145,61 @@ model ActionLogProduct {
   /// Set whenever dose is.
   doseUnit    DoseUnit?
   method      ApplicationMethod?
+  /// Catalog product; null only on logs from before the catalog. `product` keeps a copy of its name.
+  productId   String?
 
-  actionLog ActionLog @relation(fields: [actionLogId], references: [id], onDelete: Cascade)
+  actionLog ActionLog      @relation(fields: [actionLogId], references: [id], onDelete: Cascade)
+  catalog   Product?       @relation(fields: [productId], references: [id])
+  movement  StockMovement?
 
   @@index([actionLogId])
+  @@index([productId])
+}
+
+model ProductCategory {
+  id     String  @id @default(uuid())
+  name   String  @unique
+  active Boolean @default(true)
+
+  products Product[]
+}
+
+/// Stock is never stored: it is the sum of the product's movements (PLAN §14).
+model Product {
+  id         String   @id @default(uuid())
+  name       String   @unique
+  categoryId String
+  /// L, KG or G. Fixed once created.
+  unit       DoseUnit
+  minStock   Float    @default(0)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  category     ProductCategory    @relation(fields: [categoryId], references: [id])
+  movements    StockMovement[]
+  applications ActionLogProduct[]
+}
+
+/// Stock ledger. quantity is signed (positive in, negative out) in the product's unit.
+model StockMovement {
+  id                 String            @id @default(uuid())
+  productId          String
+  date               DateTime          @db.Date
+  quantity           Float
+  type               StockMovementType
+  /// Price per product unit; required on INITIAL and ENTRY, null otherwise.
+  unitCost           Float?
+  /// Set on APPLICATION; removed with the applied product.
+  actionLogProductId String?           @unique
+  reason             String?
+  userId             String
+  createdAt          DateTime          @default(now())
+
+  product          Product           @relation(fields: [productId], references: [id])
+  actionLogProduct ActionLogProduct? @relation(fields: [actionLogProductId], references: [id], onDelete: Cascade)
+  user             User              @relation(fields: [userId], references: [id])
+
+  @@index([productId, date])
 }
 
 /// Audit trail: one row per edit, written in the same transaction.
@@ -162,7 +226,8 @@ model User {
   email       String
   createdAt   DateTime @default(now())
 
-  cycles     Cycle[]
-  actionLogs ActionLog[]
-  changes    ActionLogChange[]
+  cycles         Cycle[]
+  actionLogs     ActionLog[]
+  changes        ActionLogChange[]
+  stockMovements StockMovement[]
 }

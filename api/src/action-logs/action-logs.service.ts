@@ -5,10 +5,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DetailType, Prisma } from '../generated/prisma/client.js';
+import { DetailType, Prisma, StockMovementType } from '../generated/prisma/client.js';
 import type { AuthUser } from '../auth/auth-user.js';
 import { fromDbDate, todayInPeru, toDbDate } from '../common/peru-date.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { type AppliedProductRow, ProductsService } from '../products/products.service.js';
 import {
   actionLogDetailSelect,
   type ActionLogDetailResponse,
@@ -16,7 +17,7 @@ import {
   type ActionLogResponse,
   toActionLogResponse,
 } from './action-log.response.js';
-import { diffSnapshots, type LogSnapshot } from './log-changes.js';
+import { diffSnapshots, type LogSnapshot, type ProductSnapshot } from './log-changes.js';
 import {
   type CreateActionLog,
   detailSchemas,
@@ -28,7 +29,10 @@ const NO_PRODUCTS = 'Esta acción no lleva productos';
 
 @Injectable()
 export class ActionLogsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly products: ProductsService,
+  ) {}
 
   async create(cycleId: string, body: CreateActionLog, user: AuthUser): Promise<ActionLogResponse> {
     const cycle = await this.prisma.cycle.findUnique({
@@ -52,7 +56,7 @@ export class ActionLogsService {
     let phaseId: string | null;
     let actionId: string | null = null;
     let details: Prisma.JsonObject | null = null;
-    let products: ProductInput[] = [];
+    let products: AppliedProductRow[] = [];
 
     if (body.actionId) {
       const action = await this.prisma.action.findUnique({ where: { id: body.actionId } });
@@ -63,7 +67,10 @@ export class ActionLogsService {
       name = action.name;
       phaseId = action.phaseId;
       details = this.parseDetails(action.detailType, body.details);
-      products = this.checkProducts(action.detailType, body.products);
+      products = await this.products.applicationRows(
+        this.checkProducts(action.detailType, body.products),
+        date,
+      );
     } else {
       // "Otra acción": free name, optional phase, no extra fields.
       if (body.products?.length) {
@@ -83,7 +90,7 @@ export class ActionLogsService {
         details: details ?? Prisma.DbNull,
         notes: body.notes ?? null,
         userId: user.id,
-        products: { create: products.map((product, order) => ({ ...product, order })) },
+        products: { create: products.map((row, order) => productCreate(row, order, date, user.id)) },
       },
       select: actionLogSelect,
     });
@@ -99,7 +106,7 @@ export class ActionLogsService {
         cycle: true,
         products: {
           orderBy: { order: 'asc' },
-          select: { product: true, dose: true, doseUnit: true, method: true },
+          select: { productId: true, product: true, dose: true, doseUnit: true, method: true },
         },
       },
     });
@@ -115,10 +122,16 @@ export class ActionLogsService {
       phaseId: log.phaseId,
       date: fromDbDate(log.date),
       details: log.details,
-      products: log.products,
+      products: log.products.map(toSnapshot),
       notes: log.notes,
     };
     const after = { ...before };
+    if (body.date !== undefined) {
+      this.assertDateInCycle(body.date, fromDbDate(log.cycle.startDate), log.cycle.endDate);
+      after.date = body.date;
+    }
+    // Rows to write when products or the date change (the date moves their stock movements).
+    let rows: (AppliedProductRow | ProductSnapshot)[] | null = null;
 
     if (log.action) {
       if (body.name !== undefined || body.phaseId !== undefined) {
@@ -130,7 +143,12 @@ export class ActionLogsService {
         after.details = this.parseDetails(log.action.detailType, body.details);
       }
       if (body.products !== undefined) {
-        after.products = this.checkProducts(log.action.detailType, body.products);
+        rows = await this.products.applicationRows(
+          this.checkProducts(log.action.detailType, body.products),
+          after.date,
+          new Set(log.products.flatMap((p) => (p.productId ? [p.productId] : []))),
+        );
+        after.products = rows.map(toSnapshot);
       }
     } else {
       if (body.products?.length) {
@@ -141,11 +159,10 @@ export class ActionLogsService {
         after.phaseId = body.phaseId === null ? null : await this.assertPhase(body.phaseId);
       }
     }
-    if (body.date !== undefined) {
-      this.assertDateInCycle(body.date, fromDbDate(log.cycle.startDate), log.cycle.endDate);
-      after.date = body.date;
-    }
     if (body.notes !== undefined) after.notes = body.notes ?? null;
+    if (!rows && after.date !== before.date && log.products.length) {
+      rows = await this.reapply(log.products, after.date);
+    }
 
     if (JSON.stringify(before) === JSON.stringify(after)) {
       const row = await this.prisma.actionLog.findUniqueOrThrow({
@@ -173,13 +190,12 @@ export class ActionLogsService {
           date: toDbDate(after.date),
           details: (after.details as Prisma.InputJsonValue | null) ?? Prisma.DbNull,
           notes: after.notes,
-          products:
-            after.products === before.products
-              ? undefined
-              : {
-                  deleteMany: {},
-                  create: (after.products ?? []).map((product, order) => ({ ...product, order })),
-                },
+          products: rows
+            ? {
+                deleteMany: {},
+                create: rows.map((row, order) => productCreate(row, order, after.date, user.id)),
+              }
+            : undefined,
         },
         select: actionLogSelect,
       }),
@@ -245,6 +261,23 @@ export class ActionLogsService {
     return Object.keys(filled).length ? filled : null;
   }
 
+  /**
+   * The log's products again for a new date: catalog products recompute their
+   * movement; products from before the catalog are kept as they are.
+   */
+  private async reapply(
+    existing: (ProductSnapshot & { productId: string | null })[],
+    date: string,
+  ): Promise<(AppliedProductRow | ProductSnapshot)[]> {
+    const catalog = existing.filter((p) => p.productId);
+    const resolved = await this.products.applicationRows(
+      catalog.map((p) => ({ ...p, productId: p.productId! })),
+      date,
+      new Set(catalog.map((p) => p.productId!)),
+    );
+    return existing.map((p) => (p.productId ? resolved.shift()! : toSnapshot(p)));
+  }
+
   /** Products are only for APPLICATION actions. */
   private checkProducts(type: DetailType, products: ProductInput[] | undefined): ProductInput[] {
     if (!products?.length) {
@@ -275,4 +308,37 @@ export class ActionLogsService {
       throw new BadRequestException('La fecha es posterior al cierre del ciclo');
     }
   }
+}
+
+const toSnapshot = ({ product, dose, doseUnit, method }: ProductSnapshot): ProductSnapshot => ({
+  product,
+  dose,
+  doseUnit,
+  method,
+});
+
+/** ActionLogProduct create data, with its stock movement when it takes stock. */
+function productCreate(
+  row: AppliedProductRow | ProductSnapshot,
+  order: number,
+  date: string,
+  userId: string,
+): Prisma.ActionLogProductCreateWithoutActionLogInput {
+  const snapshot = { ...toSnapshot(row), order };
+  if (!('productId' in row)) return snapshot;
+  return {
+    ...snapshot,
+    catalog: { connect: { id: row.productId } },
+    movement: row.movement
+      ? {
+          create: {
+            type: StockMovementType.APPLICATION,
+            date: toDbDate(date),
+            quantity: row.movement.quantity,
+            product: { connect: { id: row.productId } },
+            user: { connect: { id: userId } },
+          },
+        }
+      : undefined,
+  };
 }

@@ -24,21 +24,22 @@ export const detailSchemas = {
 
 const detailsInput = z.record(z.string(), z.unknown()).nullable().optional();
 
-/** One product of an APPLICATION log. */
+/** One product of an APPLICATION log, picked from the catalog (PLAN §14). */
 export const productSchema = z
   .object({
-    product: z.string().trim().min(1, 'Escribe el nombre del producto').max(200),
-    dose: z.number().positive('La dosis debe ser mayor que 0').max(1_000_000).optional(),
+    productId: z.uuid('Elige el producto'),
+    /** Total used in the lot, in `doseUnit`. */
+    dose: z.number().positive('La cantidad debe ser mayor que 0').max(1_000_000).optional(),
     doseUnit: z.enum(DoseUnit).optional(),
     method: z.enum(ApplicationMethod).optional(),
   })
   .refine((p) => p.dose === undefined || p.doseUnit !== undefined, {
-    message: 'Elige la unidad de la dosis',
+    message: 'Elige la unidad de la cantidad',
     path: ['doseUnit'],
   })
   // A unit without an amount means nothing.
   .transform((p) => ({
-    product: p.product,
+    productId: p.productId,
     dose: p.dose ?? null,
     doseUnit: p.dose === undefined ? null : (p.doseUnit ?? null),
     method: p.method ?? null,

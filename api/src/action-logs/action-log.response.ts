@@ -14,7 +14,7 @@ export const actionLogSelect = {
   notes: true,
   products: {
     orderBy: { order: 'asc' },
-    select: { product: true, dose: true, doseUnit: true, method: true },
+    select: { productId: true, product: true, dose: true, doseUnit: true, method: true },
   },
   createdAt: true,
   updatedAt: true,
@@ -37,6 +37,8 @@ export interface ActionLogResponse {
   details: Prisma.JsonValue;
   /** APPLICATION logs only; empty otherwise. */
   products: {
+    /** Null on logs from before the catalog. */
+    productId: string | null;
     product: string;
     dose: number | null;
     doseUnit: DoseUnit | null;
