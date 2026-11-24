@@ -24,6 +24,12 @@ import {
   type TemplateAction,
   type UpdateActionLog,
 } from '../../models/action.model';
+import {
+  APPLICATION_METHODS,
+  type ApplicationMethod,
+  DOSE_UNITS,
+  type DoseUnit,
+} from '../../models/details';
 import type { ActionLogDetail, DetailType, LotRef } from '../../models/lot.model';
 import { LotsService } from '../../services/lots.service';
 
@@ -88,6 +94,8 @@ export class RegisterLogComponent {
 
   protected readonly OTHER = OTHER;
   protected readonly fertilizerResults = Object.entries(FERTILIZER_RESULTS);
+  protected readonly doseUnits = Object.entries(DOSE_UNITS);
+  protected readonly applicationMethods = Object.entries(APPLICATION_METHODS);
   protected readonly today = todayInPeru();
   protected readonly saving = signal(false);
 
@@ -97,7 +105,9 @@ export class RegisterLogComponent {
     otherPhaseId: [''],
     date: [this.today, Validators.required],
     product: [''],
-    dose: [''],
+    dose: [null as number | null, Validators.min(0.001)],
+    doseUnit: ['ML' as DoseUnit],
+    method: ['' as ApplicationMethod | ''],
     humidity: [''],
     result: [''],
     chemicalApplied: [''],
@@ -132,6 +142,9 @@ export class RegisterLogComponent {
     return phase ? `${phase.order}. ${phase.name}` : 'Sin fase';
   };
   protected readonly yesNoLabel = (value: string) => (value === 'yes' ? 'Sí' : value === 'no' ? 'No' : '');
+  protected readonly doseUnitLabel = (value: string) => DOSE_UNITS[value as DoseUnit] ?? '';
+  protected readonly methodLabel = (value: string) =>
+    APPLICATION_METHODS[value as ApplicationMethod] ?? '';
   protected readonly fertilizerLabel = (value: string) =>
     FERTILIZER_RESULTS[value as keyof typeof FERTILIZER_RESULTS] ?? '';
 
@@ -202,6 +215,9 @@ export class RegisterLogComponent {
     const details = log.details ?? {};
     const text = (key: string) => (typeof details[key] === 'string' ? (details[key] as string) : '');
     const chemical = details['chemicalApplied'];
+    const dose = details['dose'];
+    const doseUnit = details['doseUnit'];
+    const method = details['method'];
 
     this.form.reset({
       actionId: log.actionId ?? OTHER,
@@ -209,7 +225,10 @@ export class RegisterLogComponent {
       otherPhaseId: log.actionId ? '' : (log.phase?.id ?? ''),
       date: log.date,
       product: text('product'),
-      dose: text('dose'),
+      // Older logs kept the dose as free text: keep its number if it starts with one.
+      dose: typeof dose === 'number' ? dose : Number.parseFloat(text('dose').replace(',', '.')) || null,
+      doseUnit: doseUnit === 'MG' || doseUnit === 'ML' ? doseUnit : 'ML',
+      method: method === 'SYSTEM' || method === 'SPRAY' ? method : '',
       humidity: text('humidity'),
       result: log.detailType === 'PEST_CHECK' ? text('result') : '',
       chemicalApplied: typeof chemical === 'boolean' ? (chemical ? 'yes' : 'no') : '',
@@ -255,7 +274,11 @@ export class RegisterLogComponent {
     switch (this.detailType()) {
       case 'APPLICATION':
         details['product'] = v.product;
-        details['dose'] = v.dose;
+        if (v.dose !== null) {
+          details['dose'] = v.dose;
+          details['doseUnit'] = v.doseUnit;
+        }
+        if (v.method) details['method'] = v.method;
         break;
       case 'IRRIGATION':
         details['humidity'] = v.humidity;

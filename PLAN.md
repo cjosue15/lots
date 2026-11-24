@@ -108,7 +108,7 @@ Se abre desde la vista del lote, con el lote y su ciclo activo ya seleccionados.
 
    | Tipo de detalle | Campos |
    |---|---|
-   | `aplicacion` (nematicida, fungicida, enraizante, foliares, fertilizantes, químico) | Producto (texto) · Dosis (texto) |
+   | `aplicacion` (nematicida, fungicida, enraizante, foliares, fertilizantes, químico) | Producto (texto) · Dosis (número) con unidad: Mililitros o Miligramos · Forma de aplicación: Por sistema o Fumigación |
    | `riego` | Humedad (texto libre) |
    | `plagas` | Resultado (texto) · ¿Se aplicó químico? (sí/no) |
    | `eval_fertilizante` | Resultado: funcionó bien / hay que cambiarlo |

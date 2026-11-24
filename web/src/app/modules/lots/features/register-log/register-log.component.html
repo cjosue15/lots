@@ -105,9 +105,48 @@
                           <label hlmFieldLabel for="log-product">Producto</label>
                           <input hlmInput id="log-product" formControlName="product" class="bg-card" />
                         </hlm-field>
+                        <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
+                          <hlm-field>
+                            <label hlmFieldLabel for="log-dose">Dosis</label>
+                            <input
+                              hlmInput
+                              id="log-dose"
+                              type="number"
+                              inputmode="decimal"
+                              min="0"
+                              step="any"
+                              formControlName="dose"
+                              placeholder="Por ejemplo, 250"
+                              class="bg-card"
+                            />
+                            <hlm-field-error validator="min">Debe ser mayor que 0.</hlm-field-error>
+                          </hlm-field>
+                          <hlm-field>
+                            <label hlmFieldLabel for="log-dose-unit">Unidad</label>
+                            <hlm-select formControlName="doseUnit" [itemToString]="doseUnitLabel">
+                              <hlm-select-trigger buttonId="log-dose-unit" class="w-full bg-card">
+                                <hlm-select-value />
+                              </hlm-select-trigger>
+                              <hlm-select-content *hlmSelectPortal>
+                                @for (option of doseUnits; track option[0]) {
+                                  <hlm-select-item [value]="option[0]">{{ option[1] }}</hlm-select-item>
+                                }
+                              </hlm-select-content>
+                            </hlm-select>
+                          </hlm-field>
+                        </div>
                         <hlm-field>
-                          <label hlmFieldLabel for="log-dose">Dosis</label>
-                          <input hlmInput id="log-dose" formControlName="dose" placeholder="Por ejemplo, 2 L por cilindro" class="bg-card" />
+                          <label hlmFieldLabel for="log-method">Forma de aplicación</label>
+                          <hlm-select formControlName="method" [itemToString]="methodLabel">
+                            <hlm-select-trigger buttonId="log-method" class="w-full bg-card">
+                              <hlm-select-value placeholder="Sin indicar" />
+                            </hlm-select-trigger>
+                            <hlm-select-content *hlmSelectPortal>
+                              @for (option of applicationMethods; track option[0]) {
+                                <hlm-select-item [value]="option[0]">{{ option[1] }}</hlm-select-item>
+                              }
+                            </hlm-select-content>
+                          </hlm-select>
                         </hlm-field>
                       }
                       @case ('IRRIGATION') {
