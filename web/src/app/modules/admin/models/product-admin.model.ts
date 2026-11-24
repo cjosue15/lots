@@ -82,3 +82,38 @@ export const MOVEMENT_LABELS: Record<StockMovementType, string> = {
 export function formatMoney(amount: number): string {
   return `S/ ${amount.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
+
+export interface ProductCost {
+  productId: string;
+  name: string;
+  unit: DoseUnit;
+  /** Total used, in the product's unit. */
+  quantity: number;
+  cost: number;
+}
+
+/** What a cycle's applications cost; most expensive product first. */
+export interface CycleCost {
+  total: number;
+  products: ProductCost[];
+}
+
+export interface CycleCostRow {
+  cycle: {
+    id: string;
+    number: number;
+    status: 'ACTIVE' | 'CLOSED';
+    startDate: string;
+    endDate: string | null;
+  };
+  lot: { id: string; number: number; greenhouse: string };
+  total: number;
+  /** Logs with at least one priced product. */
+  applications: number;
+}
+
+export interface CostReport {
+  total: number;
+  cycles: CycleCostRow[];
+  products: ProductCost[];
+}

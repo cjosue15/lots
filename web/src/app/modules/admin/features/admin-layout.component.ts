@@ -11,14 +11,14 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
       <nav
         aria-label="Secciones de administración"
-        class="mt-4 inline-flex rounded-lg bg-muted p-1"
+        class="mt-4 inline-flex max-w-full overflow-x-auto rounded-lg bg-muted p-1"
       >
         @for (tab of tabs; track tab.path) {
           <a
             [routerLink]="tab.path"
             routerLinkActive="bg-card text-foreground shadow-sm"
             ariaCurrentWhenActive="page"
-            class="rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+            class="shrink-0 rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
           >
             {{ tab.label }}
           </a>
@@ -36,6 +36,7 @@ export class AdminLayoutComponent {
     { path: 'template', label: 'Plantilla' },
     { path: 'lots', label: 'Lotes' },
     { path: 'products', label: 'Productos' },
+    { path: 'costs', label: 'Costos' },
     { path: 'map', label: 'Vista 3D' },
   ];
 }

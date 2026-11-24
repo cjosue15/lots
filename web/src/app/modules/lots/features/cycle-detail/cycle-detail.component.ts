@@ -8,12 +8,14 @@ import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
 import { formatDay } from '../../../../shared/peru-date';
 import { LogListComponent } from '../../components/log-list.component';
 import { PhaseBarComponent } from '../../components/phase-bar.component';
+import { AuthService } from '../../../auth/services/auth.service';
+import { CycleCostComponent } from '../../../admin/features/costs/cycle-cost.component';
 import { LotsService } from '../../services/lots.service';
 
 /** A cycle of the lot's history (usually closed) with all its logs. */
 @Component({
   selector: 'app-cycle-detail',
-  imports: [RouterLink, NgIcon, HlmButtonImports, HlmSkeletonImports, LogListComponent, PhaseBarComponent],
+  imports: [RouterLink, NgIcon, HlmButtonImports, HlmSkeletonImports, LogListComponent, PhaseBarComponent, CycleCostComponent],
   providers: [provideIcons({ lucideChevronLeft })],
   template: `
     <div class="mx-auto w-full max-w-3xl">
@@ -67,6 +69,10 @@ import { LotsService } from '../../services/lots.service';
           <app-phase-bar class="mt-2" [order]="cycle.phase?.order ?? null" />
         </section>
 
+        @if (isAdmin()) {
+          <app-cycle-cost class="mt-4 block" [cycleId]="cycle.id" />
+        }
+
         <section class="mt-8" aria-labelledby="cycle-logs-title">
           <h2 id="cycle-logs-title" class="px-1 text-lg font-semibold">
             Registros
@@ -80,6 +86,7 @@ import { LotsService } from '../../services/lots.service';
 })
 export class CycleDetailComponent {
   private readonly lotsService = inject(LotsService);
+  protected readonly isAdmin = inject(AuthService).isAdmin;
 
   /** Route param (withComponentInputBinding). */
   readonly cycleId = input.required<string>();

@@ -32,6 +32,12 @@ export const adminRoutes: Routes = [
           ),
       },
       {
+        path: 'costs',
+        title: 'Costos | Administración | Oro Verde',
+        loadComponent: () =>
+          import('./features/costs/costs-admin.component').then((m) => m.CostsAdminComponent),
+      },
+      {
         path: 'map',
         title: 'Vista 3D | Oro Verde',
         loadComponent: () =>

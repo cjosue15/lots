@@ -5,6 +5,8 @@ import { environment } from '../../../../environments/environment';
 import type { ActionInput, AdminGreenhouse, AdminTemplate } from '../models/admin.model';
 import type {
   AdminProducts,
+  CostReport,
+  CycleCost,
   CreateProductInput,
   ProductDetail,
   UpdateProductInput,
@@ -87,5 +89,17 @@ export class AdminService {
 
   updateCategory(id: string, body: { name?: string; active?: boolean }): Observable<AdminProducts> {
     return this.http.patch<AdminProducts>(`${this.api}/product-categories/${id}`, body);
+  }
+
+  /** Applications dated between `from` and `to` (inclusive; both optional). */
+  getCosts(from?: string, to?: string): Observable<CostReport> {
+    const params: Record<string, string> = {};
+    if (from) params['from'] = from;
+    if (to) params['to'] = to;
+    return this.http.get<CostReport>(`${this.api}/costs`, { params });
+  }
+
+  getCycleCosts(cycleId: string): Observable<CycleCost> {
+    return this.http.get<CycleCost>(`${this.api}/cycles/${cycleId}/costs`);
   }
 }
