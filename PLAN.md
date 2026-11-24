@@ -31,7 +31,7 @@ Que los ingenieros registren desde el celular **lo que se hizo hoy en cada lote*
 |---|---|
 | 3 invernaderos y 24 lotes (identificados por número) | Avisos ("falta registrar X") |
 | Ciclos por lote, con historial | Recordatorios de las acciones generales |
-| Registro de las acciones del día | Catálogo de productos |
+| Registro de las acciones del día | Productos e inventario (§14) |
 | Fase actual calculada automáticamente | Ficha de evaluación de plagas |
 | Campos extra en texto libre | Reportes y gráficos |
 | Edición solo de los registros propios, con auditoría | |
@@ -160,6 +160,7 @@ Greenhouse ──< Lot ──< Cycle ──< ActionLog ──< ActionLogChange
 | Historial de ciclos | Celular y web | Ciclos del lote: número, inicio, fin y duración |
 | Detalle del registro | Celular y web | Datos e historial de cambios |
 | Administración | Web (solo admin) | Fases y acciones de la plantilla, lotes |
+| Productos e inventario | Web (solo admin) | Catálogo, stock, historial, ingresos, ajustes y costos (§14) |
 
 - **Acciones generales de hoy:** las acciones sin fase (generales y "Otra acción" sin fase) no cambian la fase (§7). Si hay alguna registrada hoy, la vista general, la vista del lote y el recuadro de la vista 3D la muestran bajo la fase ("Hoy: Riego y control de humedad"). Las tres muestran las 3 más recientes, en lista, y "+N más" si hay más. Al día siguiente deja de mostrarse. El "Último" de la vista general y del recuadro 3D es la última acción con fase, así que no repite la acción general.
 
@@ -332,3 +333,79 @@ Resultado: **una consulta a Supabase por usuario y por token**, es decir, aproxi
 - ~~Tipo de detalle de cada acción~~: confirmado (§8), con todos los campos opcionales.
 - ~~Por confirmar: ¿cómo se aplica el fungicida y enraizante?~~ (fase 5): con mochila, dirigido a la base de cada plantín. La vista 3D ya lo muestra así.
 - **Por decidir: ¿juntar "Recibir los plantines" y "Trasplantar"?** (fase 5, §6). Mantenerlas separadas solo sirve si entre la llegada de los plantines y el trasplante pasan días y se quiere medir ese tiempo. Si se trasplantan el mismo día que llegan, es mejor una sola acción, por ejemplo "Recibir y trasplantar los plantines". En ese caso hay que actualizar el seed y `worker-actions.ts`, porque los códigos `recibir-plantines` y `trasplantar` tienen animaciones distintas.
+
+## 14. Productos e inventario (etapa 2)
+
+Hoy el producto de una aplicación es texto libre. La idea es tener un **catálogo de productos con su stock**: registrar lo que entra al almacén, descontar lo que se usa en cada aplicación y avisar cuando algo se está acabando.
+
+Las facturas de compra **no** se registran aquí: ya las lleva otra aplicación. Aquí solo se anota cuánto entra de cada producto.
+
+### Qué se quiere lograr
+
+- **Catálogo:** cada producto con su nombre, su categoría (químico, fertilizante…) y la medida en que se compra (LT, KG o GR).
+- **Ingresos de stock:** cuando llega un producto, el administrador anota cuánto entró y a qué precio por unidad (obligatorio, lo copia de la factura). Cada ingreso **suma** al stock.
+- **Consumo:** al registrar una aplicación (§8), el producto se elige del catálogo y lo usado **se descuenta** del stock.
+- **Historial (kárdex):** por producto, todas sus entradas y salidas con fecha, lote y responsable, y el stock que queda después de cada una.
+- **Alertas:** un producto con stock por debajo de su mínimo, o sin stock, se marca en la administración.
+
+### Decidido
+
+- **Un solo almacén** para toda la granja.
+- **Solo el administrador** crea productos, registra los ingresos de stock y hace los ajustes de inventario. Los ingenieros solo eligen productos del catálogo al registrar una aplicación y ven el stock que queda, nunca los precios.
+- **Categorías iniciales:** Químico y Fertilizante. El administrador puede agregar más después.
+- **La cantidad de la aplicación es el total usado en ese lote** (no la concentración por cilindro), y es lo que se descuenta del stock. En el formulario el campo pasa a llamarse "Cantidad usada".
+- **Solo productos del catálogo.** Si un producto no está, el ingeniero le pide al administrador que lo cree y luego registra la aplicación.
+- **Costo por lote y por ciclo:** sí se quiere. No se guarda en ninguna tabla: se calcula a partir de lo usado y del precio de cada ingreso (§14, "Costo"). **Solo lo ve el administrador.**
+- **No se registran compras ni facturas:** las lleva otra aplicación.
+- **El precio por unidad es obligatorio en cada ingreso de stock,** también en el inventario inicial, para que el costo por lote siempre salga completo.
+- **Unidades:** la cantidad usada se puede escribir en L o ml para los productos que se miden en volumen, y en kg, g o mg para los que se miden en peso. Se convierte a la medida del producto antes de descontar, por ejemplo 100 g de un producto en KG descuenta 0,1 KG.
+- **Puesta en marcha:** confirmada como se describe abajo. No hay fecha de inicio general: cada producto empieza con su stock inicial al crearlo.
+
+### Reglas
+
+- **Un solo libro de movimientos.** El stock no se guarda como número suelto: es la suma de los movimientos del producto (ingresos, consumos y ajustes). Así el historial siempre cuadra.
+- **Unidades:** cada producto se mide en volumen (LT y ml) o en peso (KG, GR y mg). La dosis se puede escribir en cualquier unidad de su mismo tipo y se convierte sola, por ejemplo 250 ml de un producto que se compra en LT descuenta 0,25 LT. El formulario solo ofrece las unidades del tipo del producto.
+- **Editar o borrar una aplicación** corrige su consumo en la misma transacción, para que el stock no se desfase.
+- **La app no bloquea** (§2): si el stock no alcanza, se registra igual, el stock queda en negativo y se marca como alerta para revisarlo.
+- **Ajustes de inventario:** el administrador puede corregir el stock tras un conteo físico. Queda como movimiento con su motivo.
+- **Los productos se desactivan,** nunca se borran, igual que las acciones.
+
+### Modelo de datos
+
+| Modelo (concepto) | Campos |
+|---|---|
+| `ProductCategory` (categoría) | id, name (único), active |
+| `Product` (producto) | id, name (único), categoryId, unit (LT/KG/GR), minStock, active |
+| `StockMovement` (movimiento) | id, productId, date, quantity (positiva entra, negativa sale, en la unidad del producto), type (INITIAL/ENTRY/APPLICATION/ADJUSTMENT), unitCost (obligatorio en INITIAL y ENTRY, vacío en los demás), actionLogProductId, reason, userId, createdAt |
+
+`ActionLogProduct` (§8) suma `productId`. El `product` en texto se queda como copia del nombre, igual que `ActionLog.name`.
+
+### Puesta en marcha
+
+Hoy ya hay productos en uso y nada de lo aplicado antes se puede reconstruir. Por eso el inventario de cada producto empieza con un **conteo inicial**, sin intentar calcular el pasado. No hay una fecha de inicio que configurar: **al crear un producto, el administrador escribe cuánto hay hoy, su precio por unidad y la fecha**. Eso se guarda como el primer movimiento del producto (`INITIAL`) y su fecha es el inicio de ese producto.
+
+1. **El día que se empiece a usar, antes de trabajar, se cuenta el almacén:** cuánto queda de cada producto, incluidos los envases abiertos (por ejemplo, "Filter: 0,5 LT").
+2. **El administrador crea cada producto con lo contado como stock inicial** (movimiento `INITIAL` con la fecha del conteo), con el precio de la última factura de cada producto (obligatorio, como en cualquier ingreso). Así el costo por lote funciona desde el primer día.
+3. **Desde ese día se registra todo:** cada ingreso y cada aplicación.
+4. **Las aplicaciones con fecha anterior al conteo inicial de ese producto no tocan el stock.** Se pueden registrar en el historial del lote, pero no descuentan nada, porque ese consumo ya está reflejado en el conteo.
+5. **Unas semanas después se cuenta otra vez.** La diferencia con el stock de la app se corrige con un ajuste y muestra si se está dejando de registrar algo.
+
+### Costo
+
+Es un cálculo, no un dato que se guarde: cantidad usada × precio por unidad del producto, tomado de sus ingresos. Si el mismo producto entró a precios distintos, se usa el **costo promedio**. Por ejemplo, si entró 1 LT a S/ 120 y luego 1 LT a S/ 140, el litro vale S/ 130. El costo de un lote o de un ciclo es la suma de lo que costó cada aplicación que se hizo en él.
+
+### Pantallas
+
+Las pantallas del administrador (catálogo, detalle del producto y costos) se diseñan **para web, en escritorio**: el administrador las usa desde la computadora. Pueden aprovechar el ancho con tablas y columnas, y en el celular solo tienen que verse bien, sin estar pensadas para él. El formulario de los ingenieros sigue pensado para el celular.
+
+- **Administración, Productos:** el catálogo con su stock actual y alertas, filtrable por categoría. Desde ahí se crean productos (nombre, categoría, unidad, mínimo y stock inicial con su precio y fecha) y categorías.
+- **Detalle del producto:** el kárdex y los botones "Ingresar stock" (cantidad, fecha y precio por unidad) y "Ajustar stock".
+- **Formulario de registro (ingenieros):** cuando la acción es de tipo aplicación (`APPLICATION`), el campo "Nombre" de cada producto deja de ser texto libre y pasa a ser un **selector con todos los productos activos del catálogo**, agrupados por categoría y con búsqueda por nombre. Cada opción muestra el stock que queda (por ejemplo, "Bayfolan · 2,5 L"). Los productos sin stock también aparecen, marcados como "Sin stock", porque la app no bloquea (§14, "Reglas"). Los desactivados no aparecen. Al elegir un producto, la unidad de la cantidad solo ofrece las de su tipo (volumen o peso).
+
+### Orden de construcción
+
+1. Catálogo y categorías: modelos, seed y pantalla de administración.
+2. Ingresos y movimientos, con el stock calculado y el kárdex.
+3. El formulario de aplicación elige el producto del catálogo y descuenta el stock, también al editar.
+4. Alertas de stock mínimo y ajustes de inventario.
+5. Después, el costo por lote y ciclo, y los reportes.
