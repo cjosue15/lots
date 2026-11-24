@@ -55,6 +55,13 @@ export const COLORS = {
   tin: 0xa7adaf,
   /** Shed roof: green sheeting. */
   shedRoof: 0x3f7a45,
+  /** Trucks (scene/truck.ts): the H100's white, the DF-815's blue. */
+  truckWhite: 0xeeeeea,
+  truckBlue: 0x2f5f8f,
+  glass: 0x26343d,
+  headlight: 0xf4f0d8,
+  woodDark: 0x6e5235,
+  tyre: 0x1f1f1f,
   // Worker and the things it carries.
   skin: 0x8d5a3b,
   pants: 0x3b4a5e,

@@ -2,11 +2,12 @@ import * as THREE from 'three';
 import type { Feature, GreenhousePlacement, Rect } from '../layout';
 import { random } from './beds';
 import { COLORS, type SceneAssets } from './materials';
+import { buildTruck } from './truck';
 
 /**
  * A greenhouse's ground: its covered floors and the things between lots
- * (pool, plants, hut, shed). The greenhouses' own roofs and mesh are left out
- * so the lots stay visible.
+ * (pool, plants, hut, shed, trucks). The greenhouses' own roofs and mesh are
+ * left out so the lots stay visible.
  * Positions are in world coordinates.
  */
 export function buildGreenhouse(assets: SceneAssets, gh: GreenhousePlacement): THREE.Group {
@@ -66,6 +67,8 @@ function buildFeature(assets: SceneAssets, feature: Feature, seed: number): THRE
     group.add(
       block(assets, [w, 0.08, d], [0, height + 0.04, 0], COLORS.shedRoof, { roughness: 0.7 }),
     );
+  } else if (feature.kind === 'truck-h100' || feature.kind === 'truck-df815') {
+    group.add(buildTruck(assets, feature.kind === 'truck-h100' ? 'h100' : 'df815', w, d));
   } else {
     // Guard's hut: adobe walls, a door and a sloped tin roof.
     const height = 2.2;
