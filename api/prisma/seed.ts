@@ -58,7 +58,6 @@ const PHASES: [name: string, actions: ActionSeed[]][] = [
     [
       ['recibir-plantines', 'Recibir los plantines', NONE],
       ['trasplantar', 'Trasplantar', NONE],
-      ['fungicida-enraizante', 'Aplicar fungicida y enraizante', APPLICATION],
     ],
   ],
   [

@@ -200,14 +200,6 @@ export const WORKER_ACTIONS: Readonly<Record<string, WorkerAction>> = {
     phase: 5,
     ridge: 'plant-seedlings',
   },
-  // With the backpack sprayer, aimed at the base of each new seedling.
-  'fungicida-enraizante': {
-    motion: 'spray',
-    props: ['sprayer'],
-    tint: PRODUCT.fungicide,
-    phase: 5,
-    ridge: 'drench-seedlings',
-  },
   // 6. Crecimiento
   'iniciar-tutorado': { motion: 'lift', props: [], phase: 6, ridge: 'tie-plants' },
   'limpiar-planta': { motion: 'prune', props: ['scissors'], phase: 6, ridge: 'prune-leaves' },
@@ -246,6 +238,21 @@ export const WORKER_ACTIONS: Readonly<Record<string, WorkerAction>> = {
   'control-calidad': { motion: 'inspect', props: ['clipboard'] },
 };
 
+/** Plantines: the phase where the general fungicide goes on the new seedlings. */
+const SEEDLINGS_PHASE = 5;
+
+/**
+ * The general fungicide on a lot in Plantines: with the backpack sprayer,
+ * aimed at the base of each new seedling (3 to 4 days after transplanting).
+ */
+export const FUNGICIDE_ON_SEEDLINGS: WorkerAction = {
+  motion: 'spray',
+  props: ['sprayer'],
+  tint: PRODUCT.fungicide,
+  phase: SEEDLINGS_PHASE,
+  ridge: 'drench-seedlings',
+};
+
 export function workerActionFor(code: string | null | undefined): WorkerAction | null {
   return (code && WORKER_ACTIONS[code]) || null;
 }
@@ -257,10 +264,13 @@ export function workerActionFor(code: string | null | undefined): WorkerAction |
  * until a newer one is logged, however long ago it was.
  */
 export function lotWorkerAction(
-  cycle: Pick<CycleSummary, 'lastLog' | 'lastPhaseLog'> | null,
+  cycle: Pick<CycleSummary, 'lastLog' | 'lastPhaseLog' | 'phase'> | null,
   today: string,
 ): WorkerAction | null {
   if (!cycle) return null;
   const todays = cycle.lastLog?.date === today ? workerActionFor(cycle.lastLog.code) : null;
+  if (todays === WORKER_ACTIONS['fungicida-general'] && cycle.phase?.order === SEEDLINGS_PHASE) {
+    return FUNGICIDE_ON_SEEDLINGS;
+  }
   return todays ?? workerActionFor(cycle.lastPhaseLog?.code);
 }
