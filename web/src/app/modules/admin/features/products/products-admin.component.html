@@ -132,15 +132,21 @@
           <th hlmTh scope="col" class="text-end">Mínimo</th>
           <th hlmTh scope="col" class="text-end">Costo promedio</th>
           <th hlmTh scope="col"><span class="sr-only">Estado</span></th>
+          <th hlmTh scope="col" class="w-10"><span class="sr-only">Abrir</span></th>
         </tr>
       </thead>
       <tbody hlmTBody>
         @for (product of products(); track product.id) {
-          <tr hlmTr [class.text-muted-foreground]="!product.active">
+          <tr
+            hlmTr
+            class="relative cursor-pointer hover:bg-muted/50 has-[a:focus-visible]:bg-muted/50"
+            [class.text-muted-foreground]="!product.active"
+          >
             <td hlmTd class="font-medium">
+              <!-- The link covers the whole row (after:inset-0), so any cell opens the detail. -->
               <a
                 [routerLink]="['/admin/products', product.id]"
-                class="rounded-sm underline-offset-2 hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                class="underline-offset-2 after:absolute after:inset-0 hover:underline focus-visible:outline-none"
               >
                 {{ product.name }}
               </a>
@@ -173,10 +179,13 @@
                 <span hlmBadge variant="secondary">Bajo mínimo</span>
               }
             </td>
+            <td hlmTd class="text-end text-muted-foreground">
+              <ng-icon name="lucideChevronRight" size="16" class="align-middle" aria-hidden="true" />
+            </td>
           </tr>
         } @empty {
           <tr hlmTr>
-            <td hlmTd colspan="6" class="py-10 text-center text-muted-foreground">
+            <td hlmTd colspan="7" class="py-10 text-center text-muted-foreground">
               @if (data.value()?.products?.length) {
                 Ningún producto coincide con el filtro.
               } @else {

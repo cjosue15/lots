@@ -2,7 +2,12 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucidePlus, lucideSearch, lucideTriangleAlert } from '@ng-icons/lucide';
+import {
+  lucideChevronRight,
+  lucidePlus,
+  lucideSearch,
+  lucideTriangleAlert,
+} from '@ng-icons/lucide';
 import { toast } from '@spartan-ng/brain/sonner';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
@@ -40,7 +45,7 @@ import { showSaveError } from './show-save-error';
     HlmTableImports,
     ProductFormComponent,
   ],
-  providers: [provideIcons({ lucidePlus, lucideSearch, lucideTriangleAlert })],
+  providers: [provideIcons({ lucideChevronRight, lucidePlus, lucideSearch, lucideTriangleAlert })],
   templateUrl: './products-admin.component.html',
 })
 export class ProductsAdminComponent {
