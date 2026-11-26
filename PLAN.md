@@ -336,7 +336,7 @@ Resultado: **una consulta a Supabase por usuario y por token**, es decir, aproxi
 
 ## 14. Productos e inventario (etapa 2)
 
-Hoy el producto de una aplicación es texto libre. La idea es tener un **catálogo de productos con su stock**: registrar lo que entra al almacén, descontar lo que se usa en cada aplicación y avisar cuando algo se está acabando.
+Hoy el producto de una aplicación es texto libre. La idea es tener un **catálogo de productos con su stock**: registrar lo que entra a cada invernadero, descontar lo que se usa en cada aplicación y avisar cuando algo se está acabando.
 
 Las facturas de compra **no** se registran aquí: ya las lleva otra aplicación. Aquí solo se anota cuánto entra de cada producto.
 
@@ -347,10 +347,14 @@ Las facturas de compra **no** se registran aquí: ya las lleva otra aplicación.
 - **Consumo:** al registrar una aplicación (§8), el producto se elige del catálogo y lo usado **se descuenta** del stock.
 - **Historial (kárdex):** por producto, todas sus entradas y salidas con fecha, lote y responsable, y el stock que queda después de cada una.
 - **Alertas:** un producto con stock por debajo de su mínimo, o sin stock, se marca en la administración.
+- **Stock por invernadero:** cada invernadero tiene su propio stock y su propio mínimo de cada producto.
 
 ### Decidido
 
-- **Un solo almacén** para toda la granja.
+- **Un inventario por invernadero.** Cada invernadero recibe sus propias compras y usa sus propios productos: un ingreso entra a un invernadero y una aplicación descuenta del invernadero de su lote. El catálogo (nombre, categoría y unidad) es uno solo para todos. No hay almacén general aparte de los 3 invernaderos.
+- **Stock mínimo por invernadero:** cada producto tiene un mínimo distinto en cada invernadero, y la alerta es por producto e invernadero.
+- **El precio es global:** el costo promedio de un producto se calcula con los ingresos de todos los invernaderos juntos.
+- **Sin traspasos entre invernaderos por ahora.** Se deja como mejora para después (ver "Mejoras para después").
 - **Solo el administrador** crea productos, registra los ingresos de stock y hace los ajustes de inventario. Los ingenieros solo eligen productos del catálogo al registrar una aplicación y ven el stock que queda, nunca los precios.
 - **Categorías iniciales:** Químico y Fertilizante. El administrador puede agregar más después.
 - **La cantidad de la aplicación es el total usado en ese lote** (no la concentración por cilindro), y es lo que se descuenta del stock. En el formulario el campo pasa a llamarse "Cantidad usada".
@@ -359,7 +363,7 @@ Las facturas de compra **no** se registran aquí: ya las lleva otra aplicación.
 - **No se registran compras ni facturas:** las lleva otra aplicación.
 - **El precio por unidad es obligatorio en cada ingreso de stock,** también en el inventario inicial, para que el costo por lote siempre salga completo.
 - **Unidades:** la cantidad usada se puede escribir en L o ml para los productos que se miden en volumen, y en kg, g o mg para los que se miden en peso. Se convierte a la medida del producto antes de descontar, por ejemplo 100 g de un producto en KG descuenta 0,1 KG.
-- **Puesta en marcha:** confirmada como se describe abajo. No hay fecha de inicio general: cada producto empieza con su stock inicial al crearlo.
+- **Puesta en marcha:** el inventario inicial se carga **una sola vez con un seed de producción** a partir de una tabla (ver "Puesta en marcha"). La app no tiene pantalla para el conteo inicial: un producto creado desde la administración empieza en 0 y su stock entra con los ingresos.
 
 ### Reglas
 
@@ -375,32 +379,50 @@ Las facturas de compra **no** se registran aquí: ya las lleva otra aplicación.
 | Modelo (concepto) | Campos |
 |---|---|
 | `ProductCategory` (categoría) | id, name (único), active |
-| `Product` (producto) | id, name (único), categoryId, unit (L/KG/G, del enum `DoseUnit`), minStock, active |
-| `StockMovement` (movimiento) | id, productId, date, quantity (positiva entra, negativa sale, en la unidad del producto), type (INITIAL/ENTRY/APPLICATION/ADJUSTMENT), unitCost (obligatorio en INITIAL y ENTRY, vacío en los demás), actionLogProductId, reason, userId, createdAt |
+| `Product` (producto) | id, name (único), categoryId, unit (L/KG/G, del enum `DoseUnit`), active |
+| `ProductGreenhouse` (mínimo por invernadero) | productId, greenhouseId (únicos juntos), minStock |
+| `StockMovement` (movimiento) | id, productId, greenhouseId, date, quantity (positiva entra, negativa sale, en la unidad del producto), type (INITIAL/ENTRY/APPLICATION/ADJUSTMENT), unitCost (obligatorio en INITIAL y ENTRY, vacío en los demás), actionLogProductId, reason, userId, createdAt |
+
+El stock de un producto en un invernadero es la suma de sus movimientos con ese `greenhouseId`. La aplicación toma el invernadero del lote de su ciclo. `Product.minStock` se reemplaza por `ProductGreenhouse.minStock`.
 
 `ActionLogProduct` (§8) suma `productId`. El `product` en texto se queda como copia del nombre, igual que `ActionLog.name`.
 
 ### Puesta en marcha
 
-Hoy ya hay productos en uso y nada de lo aplicado antes se puede reconstruir. Por eso el inventario de cada producto empieza con un **conteo inicial**, sin intentar calcular el pasado. No hay una fecha de inicio que configurar: **al crear un producto, el administrador escribe cuánto hay hoy, su precio por unidad y la fecha**. Eso se guarda como el primer movimiento del producto (`INITIAL`) y su fecha es el inicio de ese producto.
+Hoy ya hay productos en uso y nada de lo aplicado antes se puede reconstruir. Por eso el inventario empieza con un **conteo inicial**, sin intentar calcular el pasado. Como solo se hace una vez, no tiene pantalla: se carga con un **seed de producción**.
 
-1. **El día que se empiece a usar, antes de trabajar, se cuenta el almacén:** cuánto queda de cada producto, incluidos los envases abiertos (por ejemplo, "Filter: 0,5 LT").
-2. **El administrador crea cada producto con lo contado como stock inicial** (movimiento `INITIAL` con la fecha del conteo), con el precio de la última factura de cada producto (obligatorio, como en cualquier ingreso). Así el costo por lote funciona desde el primer día.
-3. **Desde ese día se registra todo:** cada ingreso y cada aplicación.
-4. **Las aplicaciones con fecha anterior al conteo inicial de ese producto no tocan el stock.** Se pueden registrar en el historial del lote, pero no descuentan nada, porque ese consumo ya está reflejado en el conteo.
-5. **Unas semanas después se cuenta otra vez.** La diferencia con el stock de la app se corrige con un ajuste y muestra si se está dejando de registrar algo.
+1. **El día que se empiece a usar, antes de trabajar, se cuenta cada invernadero:** cuánto queda de cada producto, incluidos los envases abiertos (por ejemplo, "Filter: 0,5 LT").
+2. **El conteo se pasa a una tabla (CSV),** una fila por producto e invernadero:
+
+   | Invernadero | Producto | Categoría | Unidad | Cantidad | Costo unitario | Stock mínimo |
+   |---|---|---|---|---|---|---|
+   | Carmen Alto | Bayfolan | Fertilizante | L | 10 | 25.00 | 2 |
+
+   - **Invernadero:** el nombre exacto de uno de los del seed (`El Dorado`, `Bungalows` o `Carmen Alto`).
+   - **Categoría:** una existente (`Químico`, `Fertilizante`) o una nueva, que el seed crea.
+   - **Producto:** el mismo nombre en varios invernaderos es el mismo producto, así que su categoría y unidad deben coincidir en todas sus filas.
+   - **Unidad:** L, KG o G. El costo unitario es por esa unidad, tomado de la última factura (obligatorio, como en cualquier ingreso).
+   - Si un producto no está en un invernadero, no lleva fila para él.
+3. **Se ejecuta el seed de producción** con la tabla y la fecha del conteo. Crea las categorías y productos que falten, el mínimo de cada producto en cada invernadero y un movimiento `INITIAL` por fila, con la fecha del conteo y a nombre del administrador. Requisitos y reglas:
+   - El administrador debe existir en `User`: tiene que haber entrado una vez a la web antes de ejecutarlo.
+   - Primero valida toda la tabla. Si un nombre de invernadero no coincide, un producto tiene categorías o unidades distintas entre filas, o falta un dato, se detiene sin guardar nada e indica la fila que falló.
+   - Guarda todo en una transacción y solo corre si todavía no hay movimientos `INITIAL`, así que ejecutarlo dos veces no duplica nada.
+   - Es un script aparte del seed de la plantilla (`prisma/seed.ts`), que sigue sin tocar el inventario.
+4. **Desde ese día se registra todo:** cada ingreso y cada aplicación.
+5. **Las aplicaciones con fecha anterior al primer movimiento del producto en el invernadero del lote no tocan el stock.** Se pueden registrar en el historial del lote, pero no descuentan nada, porque ese consumo ya está reflejado en el conteo. Para un producto creado después desde la administración, su primer movimiento en un invernadero es su primer ingreso ahí.
+6. **Unas semanas después se cuenta otra vez.** La diferencia con el stock de la app se corrige con un ajuste y muestra si se está dejando de registrar algo.
 
 ### Costo
 
-Es un cálculo, no un dato que se guarde: cantidad usada × precio por unidad del producto, tomado de sus ingresos. Si el mismo producto entró a precios distintos, se usa el **costo promedio**. Por ejemplo, si entró 1 LT a S/ 120 y luego 1 LT a S/ 140, el litro vale S/ 130. El costo de un lote o de un ciclo es la suma de lo que costó cada aplicación que se hizo en él.
+Es un cálculo, no un dato que se guarde: cantidad usada × precio por unidad del producto, tomado de sus ingresos. Si el mismo producto entró a precios distintos, se usa el **costo promedio**, con los ingresos de todos los invernaderos juntos. Por ejemplo, si entró 1 LT a S/ 120 y luego 1 LT a S/ 140, el litro vale S/ 130. El costo de un lote o de un ciclo es la suma de lo que costó cada aplicación que se hizo en él.
 
 ### Pantallas
 
 Las pantallas del administrador (catálogo, detalle del producto y costos) se diseñan **para web, en escritorio**: el administrador las usa desde la computadora. Pueden aprovechar el ancho con tablas y columnas, y en el celular solo tienen que verse bien, sin estar pensadas para él. El formulario de los ingenieros sigue pensado para el celular.
 
-- **Administración, Productos:** el catálogo con su stock actual y alertas, filtrable por categoría. Desde ahí se crean productos (nombre, categoría, unidad, mínimo y stock inicial con su precio y fecha) y categorías.
-- **Detalle del producto:** el kárdex y los botones "Ingresar stock" (cantidad, fecha y precio por unidad) y "Ajustar stock".
-- **Formulario de registro (ingenieros):** cuando la acción es de tipo aplicación (`APPLICATION`), el campo "Nombre" de cada producto deja de ser texto libre y pasa a ser un **selector con todos los productos activos del catálogo**, agrupados por categoría y con búsqueda por nombre. Cada opción muestra el stock que queda (por ejemplo, "Bayfolan · 2,5 L"). Los productos sin stock también aparecen, marcados como "Sin stock", porque la app no bloquea (§14, "Reglas"). Los desactivados no aparecen. Al elegir un producto, la unidad de la cantidad solo ofrece las de su tipo (volumen o peso).
+- **Administración, Productos:** el catálogo con una columna de stock por invernadero, cada una con su alerta, filtrable por categoría y por invernadero. Desde ahí se crean productos (nombre, categoría, unidad y el mínimo de cada invernadero, sin stock inicial: empiezan en 0) y categorías.
+- **Detalle del producto:** el stock y el mínimo de cada invernadero, el kárdex con su invernadero (filtrable) y los botones "Ingresar stock" (invernadero, cantidad, fecha y precio por unidad) y "Ajustar stock" (invernadero, cantidad y motivo).
+- **Formulario de registro (ingenieros):** cuando la acción es de tipo aplicación (`APPLICATION`), el campo "Nombre" de cada producto deja de ser texto libre y pasa a ser un **selector con todos los productos activos del catálogo**, agrupados por categoría y con búsqueda por nombre. Cada opción muestra el stock que queda **en el invernadero del lote** (por ejemplo, "Bayfolan · 2,5 L"). Los productos sin stock también aparecen, marcados como "Sin stock", porque la app no bloquea (§14, "Reglas"). Los desactivados no aparecen. Al elegir un producto, la unidad de la cantidad solo ofrece las de su tipo (volumen o peso).
 
 ### Orden de construcción
 
@@ -409,3 +431,14 @@ Las pantallas del administrador (catálogo, detalle del producto y costos) se di
 3. El formulario de aplicación elige el producto del catálogo y descuenta el stock, también al editar.
 4. Alertas de stock mínimo y ajustes de inventario.
 5. El costo por lote y ciclo, y los reportes: pestaña "Costos" de administración (por rango de fechas) y el costo de cada ciclo en su detalle, solo para el admin. Cada aplicación usa el precio promedio del producto **a la fecha de la aplicación**, así que compras posteriores no cambian el costo de ciclos pasados.
+
+Inventario por invernadero (pendiente):
+
+6. Modelo y API: `greenhouseId` en `StockMovement`, `ProductGreenhouse` con el mínimo, stock y alertas por invernadero, aplicaciones que descuentan del invernadero del lote, ingresos y ajustes con invernadero, y alta de producto sin conteo inicial. Con tests. La migración la ejecuta el usuario.
+7. Formulario de ingenieros: el selector muestra el stock del invernadero del lote.
+8. Pantallas de administración: lista, detalle, alta, ingreso y ajuste por invernadero.
+9. Seed de producción del inventario inicial desde el CSV (ver "Puesta en marcha"). Se ejecuta una vez, al salir a producción.
+
+### Mejoras para después
+
+- **Traspasos entre invernaderos:** si un producto pasa de un invernadero a otro, hoy se registraría como un ajuste de salida en uno y otro de entrada en el otro. Más adelante puede ser un movimiento `TRANSFER` (sale de uno y entra al otro el mismo día). Como el precio es global, no cambia los costos.
