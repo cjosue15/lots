@@ -14,17 +14,20 @@ import { firstValueFrom } from 'rxjs';
 import { formatDay } from '../../../../shared/peru-date';
 import { DOSE_SYMBOLS, formatAmount } from '../../../lots/models/details';
 import {
+  ALERT_LABELS,
   formatMoney,
   MOVEMENT_LABELS,
   type ProductDetail,
   type ProductMovement,
+  stockAlert,
+  usesProduct,
 } from '../../models/product-admin.model';
 import { AdminService } from '../../services/admin.service';
 import { ProductFormComponent } from './product-form.component';
 import { showSaveError } from './show-save-error';
 import { StockAdjustFormComponent, StockEntryFormComponent } from './stock-forms.component';
 
-/** One product: stock, entries and adjustments, and its ledger (kárdex). */
+/** One product: stock per greenhouse, entries and adjustments, and its ledger (kárdex). */
 @Component({
   selector: 'app-product-detail',
   imports: [
@@ -56,9 +59,34 @@ export class ProductDetailComponent {
   /** Categories for the edit form; loaded once. */
   protected readonly catalog = rxResource({ stream: () => this.admin.getProducts() });
   protected readonly categories = computed(() => this.catalog.value()?.categories ?? []);
+  protected readonly greenhouses = computed(
+    () => this.product.value()?.greenhouses.map((s) => s.greenhouse) ?? [],
+  );
+
+  /** Greenhouse id the ledger shows, or '' for all; also preselected in the stock forms. */
+  protected readonly greenhouse = signal('');
+  protected readonly movements = computed(() =>
+    (this.product.value()?.movements ?? []).filter(
+      (m) => !this.greenhouse() || m.greenhouse.id === this.greenhouse(),
+    ),
+  );
+
+  protected readonly totals = computed(() => {
+    const product = this.product.value();
+    if (!product) return { stock: 0, value: null };
+    const stock = product.greenhouses.reduce((sum, s) => sum + s.stock, 0);
+    const positive = product.greenhouses.reduce((sum, s) => sum + Math.max(s.stock, 0), 0);
+    return {
+      stock,
+      value: product.averageCost !== null && positive > 0 ? positive * product.averageCost : null,
+    };
+  });
 
   protected readonly busy = signal(false);
   protected readonly labels = MOVEMENT_LABELS;
+  protected readonly alertLabels = ALERT_LABELS;
+  protected readonly stockAlert = stockAlert;
+  protected readonly usesProduct = usesProduct;
   protected readonly money = formatMoney;
   protected readonly date = formatDay;
 

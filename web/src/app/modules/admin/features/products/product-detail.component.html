@@ -25,17 +25,10 @@
         {{ p.name }}
         @if (!p.active) {
           <span hlmBadge variant="outline">Inactivo</span>
-        } @else if (p.status === 'OUT') {
-          <span hlmBadge variant="destructive">Sin stock</span>
-        } @else if (p.status === 'LOW') {
-          <span hlmBadge variant="secondary">Bajo mínimo</span>
         }
       </h2>
       <p class="mt-1 text-sm text-muted-foreground">
         {{ p.category.name }}. Se mide en {{ symbol(p) }}.
-        @if (p.startDate) {
-          En la app desde el {{ date(p.startDate) }}.
-        }
       </p>
     </div>
 
@@ -53,6 +46,7 @@
             </hlm-dialog-header>
             <app-stock-entry-form
               [product]="p"
+              [initial]="greenhouse() || null"
               (saved)="updated($event, ctx.close)"
               (cancelled)="ctx.close()"
             />
@@ -64,10 +58,11 @@
         <hlm-dialog-content *hlmDialogPortal="let ctx" closeLabel="Cerrar">
           <hlm-dialog-header>
             <h2 hlmDialogTitle>Ajustar stock de {{ p.name }}</h2>
-            <p hlmDialogDescription>Después de contar el almacén.</p>
+            <p hlmDialogDescription>Después de contar lo que hay en un invernadero.</p>
           </hlm-dialog-header>
           <app-stock-adjust-form
             [product]="p"
+            [initial]="greenhouse() || null"
             (saved)="updated($event, ctx.close)"
             (cancelled)="ctx.close()"
           />
@@ -81,6 +76,7 @@
           </hlm-dialog-header>
           <app-product-form
             [categories]="categories()"
+            [greenhouses]="greenhouses()"
             [product]="p"
             (saved)="updated($event, ctx.close)"
             (cancelled)="ctx.close()"
@@ -123,22 +119,11 @@
   </div>
 
   <dl
-    class="mt-6 grid grid-cols-2 divide-x divide-y rounded-lg border bg-card md:grid-cols-4 md:divide-y-0"
+    class="mt-6 grid grid-cols-1 divide-y rounded-lg border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0"
   >
     <div class="px-4 py-3">
-      <dt class="text-sm text-muted-foreground">Stock actual</dt>
-      <dd
-        class="mt-1 text-2xl font-semibold tabular-nums"
-        [class.text-destructive]="p.active && p.status === 'OUT'"
-      >
-        {{ amount(p, p.stock) }}
-      </dd>
-    </div>
-    <div class="px-4 py-3">
-      <dt class="text-sm text-muted-foreground">Mínimo</dt>
-      <dd class="mt-1 text-2xl font-semibold tabular-nums">
-        {{ p.minStock ? amount(p, p.minStock) : 'Sin mínimo' }}
-      </dd>
+      <dt class="text-sm text-muted-foreground">Stock total</dt>
+      <dd class="mt-1 text-2xl font-semibold tabular-nums">{{ amount(p, totals().stock) }}</dd>
     </div>
     <div class="px-4 py-3">
       <dt class="text-sm text-muted-foreground">Costo promedio</dt>
@@ -152,16 +137,107 @@
       </dd>
     </div>
     <div class="px-4 py-3">
-      <dt class="text-sm text-muted-foreground">Valor en almacén</dt>
+      <dt class="text-sm text-muted-foreground">Valor en invernaderos</dt>
       <dd class="mt-1 text-2xl font-semibold tabular-nums">
-        {{ p.averageCost !== null && p.stock > 0 ? money(p.stock * p.averageCost) : '—' }}
+        {{ totals().value !== null ? money(totals().value!) : '—' }}
       </dd>
     </div>
   </dl>
 
+  <section class="mt-8" aria-labelledby="stock-title">
+    <h3 id="stock-title" class="text-lg font-semibold">Stock por invernadero</h3>
+    <div hlmTableContainer class="mt-3 rounded-lg border bg-card">
+      <table hlmTable>
+        <caption class="sr-only">
+          Stock de
+          {{
+            p.name
+          }}
+          en cada invernadero
+        </caption>
+        <thead hlmTHead>
+          <tr hlmTr>
+            <th hlmTh scope="col">Invernadero</th>
+            <th hlmTh scope="col" class="text-end">Stock</th>
+            <th hlmTh scope="col" class="text-end">Mínimo</th>
+            <th hlmTh scope="col">En la app desde</th>
+            <th hlmTh scope="col"><span class="sr-only">Estado</span></th>
+          </tr>
+        </thead>
+        <tbody hlmTBody>
+          @for (s of p.greenhouses; track s.greenhouse.id) {
+            <tr hlmTr [class.text-muted-foreground]="!usesProduct(s)">
+              <th hlmTh scope="row" class="font-medium text-foreground">{{ s.greenhouse.name }}</th>
+              <td
+                hlmTd
+                class="text-end tabular-nums"
+                [class.text-destructive]="p.active && s.stock < 0"
+              >
+                {{ amount(p, s.stock) }}
+              </td>
+              <td hlmTd class="text-end tabular-nums">
+                {{ s.minStock ? amount(p, s.minStock) : 'Sin mínimo' }}
+              </td>
+              <td hlmTd>
+                {{ s.startDate ? date(s.startDate) : 'Aún no ingresa' }}
+              </td>
+              <td hlmTd class="text-end">
+                @if (p.active && stockAlert(s); as alert) {
+                  <span hlmBadge [variant]="alert === 'OUT' ? 'destructive' : 'secondary'">
+                    {{ alertLabels[alert] }}
+                  </span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <section class="mt-8" aria-labelledby="ledger-title">
-    <h3 id="ledger-title" class="text-lg font-semibold">Movimientos</h3>
-    <p class="mt-1 text-sm text-muted-foreground">Del más reciente al más antiguo.</p>
+    <div class="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <h3 id="ledger-title" class="text-lg font-semibold">Movimientos</h3>
+        <p class="mt-1 text-sm text-muted-foreground">
+          Del más reciente al más antiguo. El saldo es el del invernadero de cada movimiento.
+        </p>
+      </div>
+      <div
+        role="group"
+        aria-label="Filtrar movimientos por invernadero"
+        class="inline-flex rounded-lg bg-muted p-1"
+      >
+        <button
+          type="button"
+          class="rounded-md px-3 py-1 text-sm font-medium focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+          [class]="
+            !greenhouse()
+              ? 'bg-card text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+          "
+          [attr.aria-pressed]="!greenhouse()"
+          (click)="greenhouse.set('')"
+        >
+          Todos
+        </button>
+        @for (g of greenhouses(); track g.id) {
+          <button
+            type="button"
+            class="rounded-md px-3 py-1 text-sm font-medium focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+            [class]="
+              greenhouse() === g.id
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            "
+            [attr.aria-pressed]="greenhouse() === g.id"
+            (click)="greenhouse.set(g.id)"
+          >
+            {{ g.name }}
+          </button>
+        }
+      </div>
+    </div>
     <div hlmTableContainer class="mt-3 rounded-lg border bg-card">
       <table hlmTable>
         <caption class="sr-only">
@@ -173,6 +249,7 @@
         <thead hlmTHead>
           <tr hlmTr>
             <th hlmTh scope="col">Fecha</th>
+            <th hlmTh scope="col">Invernadero</th>
             <th hlmTh scope="col">Movimiento</th>
             <th hlmTh scope="col">Detalle</th>
             <th hlmTh scope="col">Responsable</th>
@@ -182,9 +259,10 @@
           </tr>
         </thead>
         <tbody hlmTBody>
-          @for (m of p.movements; track m.id) {
+          @for (m of movements(); track m.id) {
             <tr hlmTr>
               <td hlmTd class="whitespace-nowrap">{{ date(m.date) }}</td>
+              <td hlmTd class="whitespace-nowrap">{{ m.greenhouse.name }}</td>
               <td hlmTd>{{ labels[m.type] }}</td>
               <td hlmTd class="max-w-72 whitespace-normal">
                 @if (m.log; as log) {
@@ -192,7 +270,7 @@
                     [routerLink]="['/logs', log.id]"
                     class="rounded-sm underline-offset-2 hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
                   >
-                    {{ log.lot.greenhouse }}, lote {{ log.lot.number }}
+                    Lote {{ log.lot.number }}
                   </a>
                   <span class="block text-xs text-muted-foreground">{{ log.name }}</span>
                 } @else if (m.reason) {
@@ -218,6 +296,16 @@
                 [class.text-destructive]="m.balance < 0"
               >
                 {{ amount(p, m.balance) }}
+              </td>
+            </tr>
+          } @empty {
+            <tr hlmTr>
+              <td hlmTd colspan="8" class="py-10 text-center text-muted-foreground">
+                @if (p.movements.length) {
+                  No hay movimientos en este invernadero.
+                } @else {
+                  Aún no hay movimientos. Registra el primer ingreso con «Ingresar stock».
+                }
               </td>
             </tr>
           }

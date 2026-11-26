@@ -12,8 +12,8 @@
 } @else {
   <div class="flex flex-wrap items-start justify-between gap-4">
     <p class="max-w-prose text-sm text-muted-foreground">
-      El stock sube con cada ingreso y baja con cada aplicación registrada en los lotes. Los
-      ingenieros ven el stock pero no los precios.
+      Cada invernadero tiene su propio stock: sube con cada ingreso y baja con cada aplicación
+      registrada en sus lotes. Los ingenieros ven el stock pero no los precios.
     </p>
     <hlm-dialog>
       <button hlmBtn hlmDialogTrigger type="button">
@@ -23,10 +23,11 @@
       <hlm-dialog-content *hlmDialogPortal="let ctx" class="sm:max-w-xl" closeLabel="Cerrar">
         <hlm-dialog-header>
           <h2 hlmDialogTitle>Nuevo producto</h2>
-          <p hlmDialogDescription>Cuenta lo que hay hoy en el almacén: será su stock inicial.</p>
+          <p hlmDialogDescription>Empieza sin stock: entra a cada invernadero con sus ingresos.</p>
         </hlm-dialog-header>
         <app-product-form
           [categories]="categories()"
+          [greenhouses]="greenhouses()"
           (saved)="created($event, ctx.close)"
           (cancelled)="ctx.close()"
         />
@@ -104,6 +105,40 @@
         }
       }
     </div>
+    <div
+      role="group"
+      aria-label="Filtrar por invernadero"
+      class="inline-flex rounded-lg bg-muted p-1"
+    >
+      <button
+        type="button"
+        class="rounded-md px-3 py-1 text-sm font-medium focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+        [class]="
+          !greenhouse()
+            ? 'bg-card text-foreground shadow-sm'
+            : 'text-muted-foreground hover:text-foreground'
+        "
+        [attr.aria-pressed]="!greenhouse()"
+        (click)="greenhouse.set('')"
+      >
+        Todos
+      </button>
+      @for (g of greenhouses(); track g.id) {
+        <button
+          type="button"
+          class="rounded-md px-3 py-1 text-sm font-medium focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+          [class]="
+            greenhouse() === g.id
+              ? 'bg-card text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+          "
+          [attr.aria-pressed]="greenhouse() === g.id"
+          (click)="greenhouse.set(g.id)"
+        >
+          {{ g.name }}
+        </button>
+      }
+    </div>
     <hlm-input-group class="w-full sm:ms-auto sm:w-64">
       <hlm-input-group-addon>
         <ng-icon name="lucideSearch" aria-hidden="true" />
@@ -122,16 +157,18 @@
   <div hlmTableContainer class="mt-3 rounded-lg border bg-card">
     <table hlmTable>
       <caption class="sr-only">
-        Productos con su stock
+        Productos con su stock por invernadero
       </caption>
       <thead hlmTHead>
         <tr hlmTr>
           <th hlmTh scope="col">Producto</th>
           <th hlmTh scope="col">Categoría</th>
-          <th hlmTh scope="col" class="text-end">Stock</th>
-          <th hlmTh scope="col" class="text-end">Mínimo</th>
+          @for (g of shownGreenhouses(); track g.id) {
+            <th hlmTh scope="col" class="text-end">
+              <span class="sr-only">Stock en</span> {{ g.name }}
+            </th>
+          }
           <th hlmTh scope="col" class="text-end">Costo promedio</th>
-          <th hlmTh scope="col"><span class="sr-only">Estado</span></th>
           <th hlmTh scope="col" class="w-10"><span class="sr-only">Abrir</span></th>
         </tr>
       </thead>
@@ -150,18 +187,33 @@
               >
                 {{ product.name }}
               </a>
+              @if (!product.active) {
+                <span hlmBadge variant="outline" class="ms-2">Inactivo</span>
+              }
             </td>
             <td hlmTd>{{ product.category.name }}</td>
-            <td
-              hlmTd
-              class="text-end tabular-nums"
-              [class.text-destructive]="product.active && product.stock < 0"
-            >
-              {{ amount(product, product.stock) }}
-            </td>
-            <td hlmTd class="text-end tabular-nums text-muted-foreground">
-              {{ product.minStock ? amount(product, product.minStock) : '—' }}
-            </td>
+            @for (g of shownGreenhouses(); track g.id) {
+              @let s = stockIn(product, g.id);
+              <td hlmTd class="text-end whitespace-nowrap tabular-nums">
+                @if (s && usesProduct(s)) {
+                  <span [class.text-destructive]="product.active && s.stock < 0">
+                    {{ amount(product, s.stock) }}
+                  </span>
+                  @if (product.active && stockAlert(s); as alert) {
+                    <span
+                      hlmBadge
+                      class="ms-2"
+                      [variant]="alert === 'OUT' ? 'destructive' : 'secondary'"
+                    >
+                      {{ alertLabels[alert] }}
+                    </span>
+                  }
+                } @else {
+                  <span class="text-muted-foreground" aria-hidden="true">—</span>
+                  <span class="sr-only">No se usa</span>
+                }
+              </td>
+            }
             <td hlmTd class="text-end tabular-nums">
               @if (product.averageCost !== null) {
                 {{ money(product.averageCost)
@@ -170,22 +222,22 @@
                 —
               }
             </td>
-            <td hlmTd class="text-end">
-              @if (!product.active) {
-                <span hlmBadge variant="outline">Inactivo</span>
-              } @else if (product.status === 'OUT') {
-                <span hlmBadge variant="destructive">Sin stock</span>
-              } @else if (product.status === 'LOW') {
-                <span hlmBadge variant="secondary">Bajo mínimo</span>
-              }
-            </td>
             <td hlmTd class="text-end text-muted-foreground">
-              <ng-icon name="lucideChevronRight" size="16" class="align-middle" aria-hidden="true" />
+              <ng-icon
+                name="lucideChevronRight"
+                size="16"
+                class="align-middle"
+                aria-hidden="true"
+              />
             </td>
           </tr>
         } @empty {
           <tr hlmTr>
-            <td hlmTd colspan="7" class="py-10 text-center text-muted-foreground">
+            <td
+              hlmTd
+              [attr.colspan]="4 + shownGreenhouses().length"
+              class="py-10 text-center text-muted-foreground"
+            >
               @if (data.value()?.products?.length) {
                 Ningún producto coincide con el filtro.
               } @else {

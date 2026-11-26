@@ -1,17 +1,27 @@
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  Directive,
+  inject,
+  input,
+  type OnInit,
+  output,
+  signal,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { toast } from '@spartan-ng/brain/sonner';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmInputImports } from '@spartan-ng/helm/input';
+import { HlmSelectImports } from '@spartan-ng/helm/select';
 import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 import { HlmTextareaImports } from '@spartan-ng/helm/textarea';
 import { firstValueFrom } from 'rxjs';
 import { todayInPeru } from '../../../../shared/peru-date';
 import { DateFieldComponent } from '../../../../shared/ui/date-field.component';
 import { DOSE_SYMBOLS, formatAmount } from '../../../lots/models/details';
-import type { ProductDetail } from '../../models/product-admin.model';
+import type { GreenhouseStock, ProductDetail } from '../../models/product-admin.model';
 import { AdminService } from '../../services/admin.service';
 import { showSaveError } from './show-save-error';
 
@@ -20,9 +30,42 @@ const FORM_IMPORTS = [
   HlmButtonImports,
   HlmFieldImports,
   HlmInputImports,
+  HlmSelectImports,
   HlmSpinnerImports,
   DateFieldComponent,
 ];
+
+/**
+ * The greenhouse picked in a stock form: the stock and start date shown are
+ * that greenhouse's (PLAN §14). `initial` preselects one.
+ */
+@Directive()
+abstract class GreenhouseStockForm implements OnInit {
+  protected readonly fb = inject(FormBuilder).nonNullable;
+
+  abstract readonly product: () => ProductDetail;
+  abstract readonly initial: () => string | null;
+
+  protected readonly greenhouseControl = this.fb.control('', Validators.required);
+  private readonly greenhouseId = toSignal(this.greenhouseControl.valueChanges, {
+    initialValue: '',
+  });
+
+  /** The picked greenhouse's stock, or null until one is picked. */
+  protected readonly selected = computed<GreenhouseStock | null>(
+    () => this.product().greenhouses.find((s) => s.greenhouse.id === this.greenhouseId()) ?? null,
+  );
+  /** Entries and adjustments can't go before the product's start there. */
+  protected readonly minDate = computed(() => this.selected()?.startDate ?? undefined);
+
+  protected readonly greenhouseName = (id: string) =>
+    this.product().greenhouses.find((s) => s.greenhouse.id === id)?.greenhouse.name ?? '';
+
+  ngOnInit(): void {
+    const initial = this.initial();
+    if (initial) this.greenhouseControl.setValue(initial);
+  }
+}
 
 /** "Ingresar stock": what arrived, at what price per unit, and when. */
 @Component({
@@ -32,6 +75,20 @@ const FORM_IMPORTS = [
     @let unit = symbol();
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
       <hlm-field-group class="gap-4">
+        <hlm-field>
+          <label hlmFieldLabel for="entry-greenhouse">Invernadero</label>
+          <hlm-select formControlName="greenhouseId" [itemToString]="greenhouseName">
+            <hlm-select-trigger buttonId="entry-greenhouse" class="w-full">
+              <hlm-select-value placeholder="Elige uno" />
+            </hlm-select-trigger>
+            <hlm-select-content *hlmSelectPortal>
+              @for (s of product().greenhouses; track s.greenhouse.id) {
+                <hlm-select-item [value]="s.greenhouse.id">{{ s.greenhouse.name }}</hlm-select-item>
+              }
+            </hlm-select-content>
+          </hlm-select>
+          <hlm-field-error validator="required">Elige el invernadero.</hlm-field-error>
+        </hlm-field>
         <div class="grid gap-4 sm:grid-cols-2">
           <hlm-field>
             <label hlmFieldLabel for="entry-quantity">Cantidad que entró ({{ unit }})</label>
@@ -68,7 +125,7 @@ const FORM_IMPORTS = [
           <app-date-field
             inputId="entry-date"
             formControlName="date"
-            [min]="product().startDate"
+            [min]="minDate()"
             [max]="today"
           />
         </hlm-field>
@@ -85,11 +142,12 @@ const FORM_IMPORTS = [
     </form>
   `,
 })
-export class StockEntryFormComponent {
+export class StockEntryFormComponent extends GreenhouseStockForm {
   private readonly admin = inject(AdminService);
-  private readonly fb = inject(FormBuilder).nonNullable;
 
   readonly product = input.required<ProductDetail>();
+  /** Greenhouse to preselect. */
+  readonly initial = input<string | null>(null);
   readonly saved = output<ProductDetail>();
   readonly cancelled = output<void>();
 
@@ -98,6 +156,7 @@ export class StockEntryFormComponent {
   protected readonly symbol = computed(() => DOSE_SYMBOLS[this.product().unit]);
 
   protected readonly form = this.fb.group({
+    greenhouseId: this.greenhouseControl,
     quantity: this.fb.control<number | null>(null, [Validators.required, Validators.min(0.0001)]),
     unitCost: this.fb.control<number | null>(null, [Validators.required, Validators.min(0.0001)]),
     date: [this.today, Validators.required],
@@ -108,14 +167,21 @@ export class StockEntryFormComponent {
       this.form.markAllAsTouched();
       return;
     }
-    const { quantity, unitCost, date } = this.form.getRawValue();
+    const { greenhouseId, quantity, unitCost, date } = this.form.getRawValue();
     const product = this.product();
     this.saving.set(true);
     try {
       const detail = await firstValueFrom(
-        this.admin.addStock(product.id, { quantity: quantity!, unitCost: unitCost!, date }),
+        this.admin.addStock(product.id, {
+          greenhouseId,
+          quantity: quantity!,
+          unitCost: unitCost!,
+          date,
+        }),
       );
-      toast.success(`Ingresaron ${formatAmount(quantity!, product.unit)} de ${product.name}`);
+      toast.success(
+        `Ingresaron ${formatAmount(quantity!, product.unit)} de ${product.name} a ${this.greenhouseName(greenhouseId)}`,
+      );
       this.saved.emit(detail);
     } catch (error) {
       showSaveError(error);
@@ -125,7 +191,7 @@ export class StockEntryFormComponent {
   }
 }
 
-/** "Ajustar stock": the stock counted in the warehouse; the difference is recorded. */
+/** "Ajustar stock": the stock counted in a greenhouse; the difference is recorded. */
 @Component({
   selector: 'app-stock-adjust-form',
   imports: [...FORM_IMPORTS, HlmTextareaImports],
@@ -133,10 +199,26 @@ export class StockEntryFormComponent {
     @let unit = symbol();
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
       <hlm-field-group class="gap-4">
-        <p class="text-sm text-muted-foreground">
-          La app tiene <strong class="font-medium text-foreground">{{ current() }}</strong>. Escribe
-          lo que contaste y se registrará la diferencia.
-        </p>
+        <hlm-field>
+          <label hlmFieldLabel for="adjust-greenhouse">Invernadero</label>
+          <hlm-select formControlName="greenhouseId" [itemToString]="greenhouseName">
+            <hlm-select-trigger buttonId="adjust-greenhouse" class="w-full">
+              <hlm-select-value placeholder="Elige uno" />
+            </hlm-select-trigger>
+            <hlm-select-content *hlmSelectPortal>
+              @for (s of product().greenhouses; track s.greenhouse.id) {
+                <hlm-select-item [value]="s.greenhouse.id">{{ s.greenhouse.name }}</hlm-select-item>
+              }
+            </hlm-select-content>
+          </hlm-select>
+          <hlm-field-error validator="required">Elige el invernadero.</hlm-field-error>
+        </hlm-field>
+        @if (selected(); as s) {
+          <p class="text-sm text-muted-foreground">
+            La app tiene <strong class="font-medium text-foreground">{{ current() }}</strong> en
+            {{ s.greenhouse.name }}. Escribe lo que contaste y se registrará la diferencia.
+          </p>
+        }
         <hlm-field>
           <label hlmFieldLabel for="adjust-counted">Stock contado ({{ unit }})</label>
           <input
@@ -171,7 +253,7 @@ export class StockEntryFormComponent {
           <app-date-field
             inputId="adjust-date"
             formControlName="date"
-            [min]="product().startDate"
+            [min]="minDate()"
             [max]="today"
           />
         </hlm-field>
@@ -188,11 +270,12 @@ export class StockEntryFormComponent {
     </form>
   `,
 })
-export class StockAdjustFormComponent {
+export class StockAdjustFormComponent extends GreenhouseStockForm {
   private readonly admin = inject(AdminService);
-  private readonly fb = inject(FormBuilder).nonNullable;
 
   readonly product = input.required<ProductDetail>();
+  /** Greenhouse to preselect. */
+  readonly initial = input<string | null>(null);
   readonly saved = output<ProductDetail>();
   readonly cancelled = output<void>();
 
@@ -200,10 +283,11 @@ export class StockAdjustFormComponent {
   protected readonly saving = signal(false);
   protected readonly symbol = computed(() => DOSE_SYMBOLS[this.product().unit]);
   protected readonly current = computed(() =>
-    formatAmount(this.product().stock, this.product().unit),
+    formatAmount(this.selected()?.stock ?? 0, this.product().unit),
   );
 
   protected readonly form = this.fb.group({
+    greenhouseId: this.greenhouseControl,
     counted: this.fb.control<number | null>(null, Validators.required),
     reason: ['', [Validators.required, Validators.maxLength(300)]],
     date: [this.today, Validators.required],
@@ -216,8 +300,9 @@ export class StockAdjustFormComponent {
   /** "+0,5 L" or "−0,25 L", or null when nothing to adjust. */
   protected readonly difference = computed(() => {
     const counted = this.counted();
-    if (counted === null || Number.isNaN(counted)) return null;
-    const diff = Math.round((counted - this.product().stock) * 1e6) / 1e6;
+    const selected = this.selected();
+    if (!selected || counted === null || Number.isNaN(counted)) return null;
+    const diff = Math.round((counted - selected.stock) * 1e6) / 1e6;
     if (diff === 0) return null;
     const amount = formatAmount(Math.abs(diff), this.product().unit);
     return diff > 0 ? `+${amount}` : `−${amount}`;
@@ -231,17 +316,20 @@ export class StockAdjustFormComponent {
       this.form.markAllAsTouched();
       return;
     }
-    const { counted, reason, date } = this.form.getRawValue();
+    const { greenhouseId, counted, reason, date } = this.form.getRawValue();
     this.saving.set(true);
     try {
       const detail = await firstValueFrom(
         this.admin.adjustStock(this.product().id, {
+          greenhouseId,
           counted: counted!,
           reason: reason.trim(),
           date,
         }),
       );
-      toast.success(`Stock ajustado a ${formatAmount(counted!, detail.unit)}`);
+      toast.success(
+        `Stock de ${this.greenhouseName(greenhouseId)} ajustado a ${formatAmount(counted!, detail.unit)}`,
+      );
       this.saved.emit(detail);
     } catch (error) {
       showSaveError(error);

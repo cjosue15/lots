@@ -20,16 +20,19 @@ import { HlmTableImports } from '@spartan-ng/helm/table';
 import { firstValueFrom } from 'rxjs';
 import { DOSE_SYMBOLS, formatAmount } from '../../../lots/models/details';
 import {
+  ALERT_LABELS,
   type AdminCategory,
   type AdminProduct,
   formatMoney,
   type ProductDetail,
+  stockAlert,
+  usesProduct,
 } from '../../models/product-admin.model';
 import { AdminService } from '../../services/admin.service';
 import { ProductFormComponent } from './product-form.component';
 import { showSaveError } from './show-save-error';
 
-/** Catalog with stock and alerts, plus categories (PLAN §14). Desktop first. */
+/** Catalog with stock and alerts per greenhouse, plus categories (PLAN §14). Desktop first. */
 @Component({
   selector: 'app-products-admin',
   imports: [
@@ -56,17 +59,34 @@ export class ProductsAdminComponent {
 
   /** Category id, or '' for all. */
   protected readonly category = signal('');
+  /** Greenhouse id, or '' for all: limits the stock columns and the alerts. */
+  protected readonly greenhouse = signal('');
   protected readonly search = signal('');
   protected readonly onlyAlerts = signal(false);
   protected readonly busy = signal<string | null>(null);
 
   protected readonly categories = computed(() => this.data.value()?.categories ?? []);
+  protected readonly greenhouses = computed(() => this.data.value()?.greenhouses ?? []);
+  protected readonly shownGreenhouses = computed(() =>
+    this.greenhouses().filter((g) => !this.greenhouse() || g.id === this.greenhouse()),
+  );
 
+  /** Alerts of a product in the greenhouses shown. */
+  private alertsOf(product: AdminProduct) {
+    if (!product.active) return [];
+    const shown = new Set(this.shownGreenhouses().map((g) => g.id));
+    return product.greenhouses
+      .filter((s) => shown.has(s.greenhouse.id))
+      .map(stockAlert)
+      .filter((alert) => alert !== null);
+  }
+
+  /** Counted per product and greenhouse. */
   protected readonly alerts = computed(() => {
-    const active = (this.data.value()?.products ?? []).filter((p) => p.active);
+    const all = (this.data.value()?.products ?? []).flatMap((p) => this.alertsOf(p));
     return {
-      out: active.filter((p) => p.status === 'OUT').length,
-      low: active.filter((p) => p.status === 'LOW').length,
+      out: all.filter((alert) => alert === 'OUT').length,
+      low: all.filter((alert) => alert === 'LOW').length,
     };
   });
 
@@ -77,7 +97,7 @@ export class ProductsAdminComponent {
         (p) =>
           (!this.category() || p.category.id === this.category()) &&
           (!term || normalize(p.name).includes(term)) &&
-          (!this.onlyAlerts() || (p.active && p.status !== 'OK')),
+          (!this.onlyAlerts() || this.alertsOf(p).length > 0),
       )
       .sort((a, b) => Number(b.active) - Number(a.active));
   });
@@ -86,6 +106,11 @@ export class ProductsAdminComponent {
     formatAmount(value, product.unit);
   protected readonly symbol = (product: AdminProduct) => DOSE_SYMBOLS[product.unit];
   protected readonly money = formatMoney;
+  protected readonly alertLabels = ALERT_LABELS;
+  protected readonly stockAlert = stockAlert;
+  protected readonly usesProduct = usesProduct;
+  protected readonly stockIn = (product: AdminProduct, greenhouseId: string) =>
+    product.greenhouses.find((s) => s.greenhouse.id === greenhouseId);
 
   protected created(detail: ProductDetail, close: () => void): void {
     close();

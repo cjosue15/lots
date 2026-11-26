@@ -1,5 +1,5 @@
 import { Component, computed, inject, input, type OnInit, output, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, type FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { toast } from '@spartan-ng/brain/sonner';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
@@ -7,12 +7,11 @@ import { HlmInputImports } from '@spartan-ng/helm/input';
 import { HlmSelectImports } from '@spartan-ng/helm/select';
 import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 import { firstValueFrom } from 'rxjs';
-import { todayInPeru } from '../../../../shared/peru-date';
-import { DateFieldComponent } from '../../../../shared/ui/date-field.component';
 import type { DoseUnit } from '../../../lots/models/lot.model';
 import { DOSE_SYMBOLS } from '../../../lots/models/details';
 import {
   type AdminCategory,
+  type GreenhouseRef,
   type ProductDetail,
   STOCK_UNITS,
 } from '../../models/product-admin.model';
@@ -20,8 +19,8 @@ import { AdminService } from '../../services/admin.service';
 import { showSaveError } from './show-save-error';
 
 /**
- * Creates a product with its initial count, or edits name, category and
- * minimum of an existing one (the unit and the initial stock are fixed).
+ * Creates a product (with no stock: it comes in with its entries), or edits
+ * name, category and minimums of an existing one (the unit is fixed).
  */
 @Component({
   selector: 'app-product-form',
@@ -32,7 +31,6 @@ import { showSaveError } from './show-save-error';
     HlmInputImports,
     HlmSelectImports,
     HlmSpinnerImports,
-    DateFieldComponent,
   ],
   template: `
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
@@ -84,68 +82,30 @@ import { showSaveError } from './show-save-error';
           </hlm-field>
         </div>
 
-        <hlm-field>
-          <label hlmFieldLabel for="product-min">Stock mínimo ({{ symbol() }})</label>
-          <input
-            hlmInput
-            id="product-min"
-            type="number"
-            inputmode="decimal"
-            min="0"
-            step="any"
-            formControlName="minStock"
-          />
-          <p hlmFieldDescription>Por debajo de este stock el producto se marca en alerta.</p>
-          <hlm-field-error validator="min">No puede ser negativo.</hlm-field-error>
-        </hlm-field>
-
-        @if (!product()) {
-          <fieldset class="grid gap-4 rounded-lg bg-muted/60 p-4 sm:grid-cols-2">
-            <legend class="float-left mb-1 text-sm font-medium sm:col-span-2">
-              Stock inicial (lo que hay hoy en el almacén)
-            </legend>
+        <fieldset class="grid gap-4 sm:grid-cols-3">
+          <legend class="float-left mb-1 text-sm font-medium sm:col-span-3">
+            Stock mínimo por invernadero ({{ symbol() }})
+          </legend>
+          @for (greenhouse of greenhouses(); track greenhouse.id; let i = $index) {
             <hlm-field>
-              <label hlmFieldLabel for="product-initial">Cantidad ({{ symbol() }})</label>
+              <label hlmFieldLabel [for]="'product-min-' + i">{{ greenhouse.name }}</label>
               <input
                 hlmInput
-                id="product-initial"
+                [id]="'product-min-' + i"
                 type="number"
                 inputmode="decimal"
                 min="0"
                 step="any"
-                formControlName="initialStock"
-                class="bg-card"
+                [formControl]="form.controls.minimums.at(i)"
               />
-              <hlm-field-error validator="required"
-                >Escribe la cantidad (0 si no hay).</hlm-field-error
-              >
-              <hlm-field-error validator="min">No puede ser negativa.</hlm-field-error>
+              <hlm-field-error validator="min">No puede ser negativo.</hlm-field-error>
             </hlm-field>
-            <hlm-field>
-              <label hlmFieldLabel for="product-cost">Precio por {{ symbol() }} (S/)</label>
-              <input
-                hlmInput
-                id="product-cost"
-                type="number"
-                inputmode="decimal"
-                min="0"
-                step="any"
-                formControlName="unitCost"
-                placeholder="De la última factura"
-                class="bg-card"
-              />
-              <hlm-field-error validator="required">Escribe el precio.</hlm-field-error>
-              <hlm-field-error validator="min">Debe ser mayor que 0.</hlm-field-error>
-            </hlm-field>
-            <hlm-field class="sm:col-span-2">
-              <label hlmFieldLabel for="product-date">Fecha del conteo</label>
-              <app-date-field inputId="product-date" formControlName="date" [max]="today" />
-              <p hlmFieldDescription>
-                Las aplicaciones anteriores a esta fecha no descuentan de este stock.
-              </p>
-            </hlm-field>
-          </fieldset>
-        }
+          }
+          <p class="text-sm text-muted-foreground sm:col-span-3">
+            Por debajo de este stock el producto se marca en alerta en ese invernadero. Deja 0 donde
+            no se usa.
+          </p>
+        </fieldset>
       </hlm-field-group>
 
       <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -165,12 +125,13 @@ export class ProductFormComponent implements OnInit {
   private readonly fb = inject(FormBuilder).nonNullable;
 
   readonly categories = input.required<AdminCategory[]>();
+  /** One minimum per greenhouse, in this order. */
+  readonly greenhouses = input.required<GreenhouseRef[]>();
   /** Set when editing. */
   readonly product = input<ProductDetail | null>(null);
   readonly saved = output<ProductDetail>();
   readonly cancelled = output<void>();
 
-  protected readonly today = todayInPeru();
   protected readonly saving = signal(false);
   protected readonly units = Object.entries(STOCK_UNITS);
 
@@ -178,10 +139,7 @@ export class ProductFormComponent implements OnInit {
     name: ['', [Validators.required, Validators.maxLength(120)]],
     categoryId: ['', Validators.required],
     unit: this.fb.control<DoseUnit>('L'),
-    minStock: this.fb.control<number | null>(0, Validators.min(0)),
-    initialStock: this.fb.control<number | null>(null, [Validators.required, Validators.min(0)]),
-    unitCost: this.fb.control<number | null>(null, [Validators.required, Validators.min(0.0001)]),
-    date: [this.today, Validators.required],
+    minimums: this.fb.array<FormControl<number | null>>([]),
   });
 
   private readonly unit = signal<DoseUnit>('L');
@@ -202,16 +160,15 @@ export class ProductFormComponent implements OnInit {
 
   ngOnInit(): void {
     const product = this.product();
-    if (!product) return;
-    this.form.patchValue({
-      name: product.name,
-      categoryId: product.category.id,
-      minStock: product.minStock,
-    });
-    // The initial count is only asked when creating.
-    for (const control of ['unit', 'initialStock', 'unitCost', 'date'] as const) {
-      this.form.controls[control].disable();
+    for (const greenhouse of this.greenhouses()) {
+      const current = product?.greenhouses.find((s) => s.greenhouse.id === greenhouse.id);
+      this.form.controls.minimums.push(
+        this.fb.control<number | null>(current?.minStock ?? 0, Validators.min(0)),
+      );
     }
+    if (!product) return;
+    this.form.patchValue({ name: product.name, categoryId: product.category.id });
+    this.form.controls.unit.disable();
   }
 
   protected async submit(): Promise<void> {
@@ -221,6 +178,10 @@ export class ProductFormComponent implements OnInit {
     }
     const v = this.form.getRawValue();
     const current = this.product();
+    const minimums = this.greenhouses().map((greenhouse, i) => ({
+      greenhouseId: greenhouse.id,
+      minStock: v.minimums[i] ?? 0,
+    }));
     this.saving.set(true);
     try {
       const detail = await firstValueFrom(
@@ -228,16 +189,13 @@ export class ProductFormComponent implements OnInit {
           ? this.admin.updateProduct(current.id, {
               name: v.name.trim(),
               categoryId: v.categoryId,
-              minStock: v.minStock ?? 0,
+              minimums,
             })
           : this.admin.createProduct({
               name: v.name.trim(),
               categoryId: v.categoryId,
               unit: v.unit,
-              minStock: v.minStock ?? 0,
-              initialStock: v.initialStock!,
-              unitCost: v.unitCost!,
-              date: v.date,
+              minimums,
             }),
       );
       toast.success(current ? 'Cambios guardados' : `${detail.name} creado`);

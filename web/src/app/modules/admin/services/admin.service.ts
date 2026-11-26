@@ -71,14 +71,14 @@ export class AdminService {
 
   addStock(
     id: string,
-    body: { quantity: number; unitCost: number; date: string },
+    body: { greenhouseId: string; quantity: number; unitCost: number; date: string },
   ): Observable<ProductDetail> {
     return this.http.post<ProductDetail>(`${this.api}/products/${id}/entries`, body);
   }
 
   adjustStock(
     id: string,
-    body: { counted: number; reason: string; date: string },
+    body: { greenhouseId: string; counted: number; reason: string; date: string },
   ): Observable<ProductDetail> {
     return this.http.post<ProductDetail>(`${this.api}/products/${id}/adjustments`, body);
   }
