@@ -432,11 +432,11 @@ Las pantallas del administrador (catálogo, detalle del producto y costos) se di
 4. Alertas de stock mínimo y ajustes de inventario.
 5. El costo por lote y ciclo, y los reportes: pestaña "Costos" de administración (por rango de fechas) y el costo de cada ciclo en su detalle, solo para el admin. Cada aplicación usa el precio promedio del producto **a la fecha de la aplicación**, así que compras posteriores no cambian el costo de ciclos pasados.
 
-Inventario por invernadero (pendiente):
+Inventario por invernadero (pasos 6 a 8 hechos; falta el 9):
 
-6. Modelo y API: `greenhouseId` en `StockMovement`, `ProductGreenhouse` con el mínimo, stock y alertas por invernadero, aplicaciones que descuentan del invernadero del lote, ingresos y ajustes con invernadero, y alta de producto sin conteo inicial. Con tests. La migración la ejecuta el usuario.
-7. Formulario de ingenieros: el selector muestra el stock del invernadero del lote.
-8. Pantallas de administración: lista, detalle, alta, ingreso y ajuste por invernadero.
+6. ~~Modelo y API: `greenhouseId` en `StockMovement`, `ProductGreenhouse` con el mínimo, stock y alertas por invernadero, aplicaciones que descuentan del invernadero del lote, ingresos y ajustes con invernadero, y alta de producto sin conteo inicial. Con tests. La migración la ejecuta el usuario.~~ (hecho)
+7. ~~Formulario de ingenieros: el selector muestra el stock del invernadero del lote.~~ (hecho)
+8. ~~Pantallas de administración: lista, detalle, alta, ingreso y ajuste por invernadero.~~ (hecho)
 9. Seed de producción del inventario inicial desde el CSV (ver "Puesta en marcha"). Se ejecuta una vez, al salir a producción.
 
 ### Mejoras para después
