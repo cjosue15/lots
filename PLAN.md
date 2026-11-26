@@ -407,7 +407,14 @@ Hoy ya hay productos en uso y nada de lo aplicado antes se puede reconstruir. Po
    - El administrador debe existir en `User`: tiene que haber entrado una vez a la web antes de ejecutarlo.
    - Primero valida toda la tabla. Si un nombre de invernadero no coincide, un producto tiene categorías o unidades distintas entre filas, o falta un dato, se detiene sin guardar nada e indica la fila que falló.
    - Guarda todo en una transacción y solo corre si todavía no hay movimientos `INITIAL`, así que ejecutarlo dos veces no duplica nada.
-   - Es un script aparte del seed de la plantilla (`prisma/seed.ts`), que sigue sin tocar el inventario.
+   - Es un script aparte del seed de la plantilla (`prisma/seed.ts`), que sigue sin tocar el inventario: `prisma/seed-inventory.ts`. Desde `api/`:
+
+     ```bash
+     pnpm db:seed:inventory <archivo.csv> <fecha YYYY-MM-DD> <email del admin>
+     ```
+
+     `prisma/inventory-template.csv` trae los encabezados. El CSV puede venir separado por comas o por punto y coma (como lo exporta Excel), los encabezados no distinguen mayúsculas ni tildes, y los decimales pueden ir con punto o coma. La unidad acepta L, KG o G (también LT y GR). El stock mínimo vacío vale 0.
+   - Un producto que ya existe en la app (creado antes desde la administración) se usa tal cual: su unidad y su categoría deben coincidir con la tabla. Si un nombre de producto o de categoría solo difiere de uno existente en mayúsculas o tildes, se detiene y pide escribirlo igual, para no crear duplicados.
 4. **Desde ese día se registra todo:** cada ingreso y cada aplicación.
 5. **Las aplicaciones con fecha anterior al primer movimiento del producto en el invernadero del lote no tocan el stock.** Se pueden registrar en el historial del lote, pero no descuentan nada, porque ese consumo ya está reflejado en el conteo. Para un producto creado después desde la administración, su primer movimiento en un invernadero es su primer ingreso ahí.
 6. **Unas semanas después se cuenta otra vez.** La diferencia con el stock de la app se corrige con un ajuste y muestra si se está dejando de registrar algo.
@@ -432,12 +439,12 @@ Las pantallas del administrador (catálogo, detalle del producto y costos) se di
 4. Alertas de stock mínimo y ajustes de inventario.
 5. El costo por lote y ciclo, y los reportes: pestaña "Costos" de administración (por rango de fechas) y el costo de cada ciclo en su detalle, solo para el admin. Cada aplicación usa el precio promedio del producto **a la fecha de la aplicación**, así que compras posteriores no cambian el costo de ciclos pasados.
 
-Inventario por invernadero (pasos 6 a 8 hechos; falta el 9):
+Inventario por invernadero (hecho):
 
 6. ~~Modelo y API: `greenhouseId` en `StockMovement`, `ProductGreenhouse` con el mínimo, stock y alertas por invernadero, aplicaciones que descuentan del invernadero del lote, ingresos y ajustes con invernadero, y alta de producto sin conteo inicial. Con tests. La migración la ejecuta el usuario.~~ (hecho)
 7. ~~Formulario de ingenieros: el selector muestra el stock del invernadero del lote.~~ (hecho)
 8. ~~Pantallas de administración: lista, detalle, alta, ingreso y ajuste por invernadero.~~ (hecho)
-9. Seed de producción del inventario inicial desde el CSV (ver "Puesta en marcha"). Se ejecuta una vez, al salir a producción.
+9. ~~Seed de producción del inventario inicial desde el CSV (ver "Puesta en marcha"). Se ejecuta una vez, al salir a producción.~~ (hecho; falta ejecutarlo al salir a producción)
 
 ### Mejoras para después
 
