@@ -7,5 +7,6 @@ export interface CatalogProduct {
   /** L, KG or G. */
   unit: DoseUnit;
   category: { id: string; name: string };
+  /** In the greenhouse of the lot being logged. */
   stock: number;
 }

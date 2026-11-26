@@ -14,7 +14,7 @@ import { HlmSelectImports } from '@spartan-ng/helm/select';
 import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
 import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 import { HlmTextareaImports } from '@spartan-ng/helm/textarea';
-import { firstValueFrom, forkJoin, map, type Observable, tap } from 'rxjs';
+import { firstValueFrom, forkJoin, map, type Observable, switchMap, tap } from 'rxjs';
 import { todayInPeru } from '../../../../shared/peru-date';
 import { DateFieldComponent } from '../../../../shared/ui/date-field.component';
 import {
@@ -210,9 +210,12 @@ export class RegisterLogComponent {
 
   private loadContext(lotId?: string, logId?: string): Observable<FormContext> {
     const template = this.lotsService.getTemplate();
-    const products = this.lotsService.getProducts();
     if (logId) {
-      return forkJoin({ log: this.lotsService.getLog(logId), template, products }).pipe(
+      // The stock shown is the lot's greenhouse's, so products wait for the log's lot.
+      return forkJoin({ log: this.lotsService.getLog(logId), template }).pipe(
+        switchMap(({ log, template }) =>
+          this.lotsService.getProducts(log.lot.id).pipe(map((products) => ({ log, template, products }))),
+        ),
         map(({ log, template, products }) => ({
           lot: log.lot,
           cycle: log.cycle,
@@ -223,6 +226,7 @@ export class RegisterLogComponent {
         tap(({ log }) => this.fillForm(log)),
       );
     }
+    const products = this.lotsService.getProducts(lotId!);
     return forkJoin({ lot: this.lotsService.getLot(lotId!), template, products }).pipe(
       map(({ lot, template, products }) => ({
         lot: { id: lot.id, number: lot.number, greenhouse: lot.greenhouse },

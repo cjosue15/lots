@@ -46,9 +46,12 @@ export class LotsService {
       .pipe(tap((template) => (this.template = template)));
   }
 
-  /** Active products with their stock, fresh each time (stock changes with every log). */
-  getProducts(): Observable<CatalogProduct[]> {
-    return this.http.get<CatalogProduct[]>(`${this.api}/products`);
+  /**
+   * Active products with their stock in the lot's greenhouse, fresh each time
+   * (stock changes with every log).
+   */
+  getProducts(lotId: string): Observable<CatalogProduct[]> {
+    return this.http.get<CatalogProduct[]>(`${this.api}/products`, { params: { lotId } });
   }
 
   createLog(cycleId: string, body: CreateActionLog): Observable<ActionLog> {

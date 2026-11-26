@@ -130,9 +130,9 @@ export function readProduct(group: ProductForm): ProductInput | null {
           @if (selected(); as product) {
             <p hlmFieldDescription [class.text-destructive]="product.stock <= 0">
               @if (product.stock > 0) {
-                Quedan {{ stockLabel(product) }} en el almacén.
+                Quedan {{ stockLabel(product) }} en {{ greenhouse() }}.
               } @else {
-                Sin stock en el almacén. Puedes registrarlo igual; el administrador lo revisará.
+                Sin stock en {{ greenhouse() }}. Puedes registrarlo igual; el administrador lo revisará.
               }
             </p>
           } @else if (legacyName()) {
@@ -192,6 +192,8 @@ export class ProductFieldsComponent {
   readonly index = input.required<number>();
   /** Active catalog products, sorted by category and name. */
   readonly products = input.required<CatalogProduct[]>();
+  /** Name of the lot's greenhouse: the stock shown is the one there. */
+  readonly greenhouse = input.required<string>();
   /** Name typed on a log from before the catalog, shown until a product is picked. */
   readonly legacyName = input<string | null>(null);
   readonly removable = input(false);

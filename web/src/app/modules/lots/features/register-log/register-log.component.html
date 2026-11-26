@@ -107,6 +107,7 @@
                               [group]="group"
                               [index]="i"
                               [products]="data.products"
+                              [greenhouse]="data.lot.greenhouse.name"
                               [legacyName]="legacyNames()[i] ?? null"
                               [removable]="form.controls.products.length > 1"
                               (remove)="removeProduct(i)"
