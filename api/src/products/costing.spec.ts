@@ -31,4 +31,12 @@ describe('applicationCost', () => {
     expect(applicationCost(entries, '2026-11-05', 0.25)).toBe(30);
     expect(applicationCost(entries, '2026-11-12', 1 / 3)).toBe(43.33);
   });
+
+  it('uses the first price when it was used before anything came in', () => {
+    expect(applicationCost(entries, '2026-10-28', 2)).toBe(240);
+  });
+
+  it('is null without entries', () => {
+    expect(applicationCost([], '2026-11-05', 1)).toBeNull();
+  });
 });

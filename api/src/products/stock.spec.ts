@@ -39,14 +39,14 @@ describe('stockStatus', () => {
 });
 
 describe('usesStock', () => {
-  it('takes stock only on or after the start in that greenhouse', () => {
+  it('takes nothing before the initial count, which already has that use', () => {
     expect(usesStock('2026-12-01', '2026-12-01')).toBe(true);
     expect(usesStock('2026-12-05', '2026-12-01')).toBe(true);
     expect(usesStock('2026-11-28', '2026-12-01')).toBe(false);
   });
 
-  it('takes nothing where the product never came in', () => {
-    expect(usesStock('2026-12-05', undefined)).toBe(false);
+  it('always takes stock where the product was not counted, even before it came in', () => {
+    expect(usesStock('2026-12-05', undefined)).toBe(true);
   });
 });
 
@@ -66,6 +66,7 @@ describe('greenhouseStocks', () => {
         [stockKey('p', 'b'), 2],
       ]),
       starts: new Map([[stockKey('p', 'a'), '2026-12-01']]),
+      initials: new Map([[stockKey('p', 'a'), '2026-12-01']]),
     };
     expect(greenhouseStocks('p', [a, b], figures)).toEqual([
       {
@@ -74,15 +75,35 @@ describe('greenhouseStocks', () => {
         minStock: 2,
         status: 'LOW',
         startDate: '2026-12-01',
+        initialDate: '2026-12-01',
       },
-      { greenhouse: b, stock: 8, minStock: 2, status: 'OK', startDate: null },
+      {
+        greenhouse: b,
+        stock: 8,
+        minStock: 2,
+        status: 'OK',
+        startDate: null,
+        initialDate: null,
+      },
     ]);
   });
 
   it('lists greenhouses without movements or minimum as empty', () => {
-    const empty = { stock: new Map(), minimums: new Map(), starts: new Map() };
+    const empty = {
+      stock: new Map(),
+      minimums: new Map(),
+      starts: new Map(),
+      initials: new Map(),
+    };
     expect(greenhouseStocks('p', [a], empty)).toEqual([
-      { greenhouse: a, stock: 0, minStock: 0, status: 'OUT', startDate: null },
+      {
+        greenhouse: a,
+        stock: 0,
+        minStock: 0,
+        status: 'OUT',
+        startDate: null,
+        initialDate: null,
+      },
     ]);
   });
 });

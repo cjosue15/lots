@@ -46,11 +46,14 @@ export interface GreenhouseStock {
   stock: number;
   minStock: number;
   status: StockStatus;
-  /**
-   * Day of its first movement in this greenhouse: applications before it do
-   * not touch stock. Null while nothing came in there.
-   */
+  /** Day of its first movement of any kind in this greenhouse; null while it has none. */
   startDate: string | null;
+  /**
+   * Day of its initial count there (go-live, PLAN §14). Applications before
+   * it don't touch stock and entries or adjustments can't go before it. Null
+   * when the product was not counted there.
+   */
+  initialDate: string | null;
 }
 
 export interface AdminProduct {
@@ -126,6 +129,7 @@ export interface StockFigures {
   stock: ReadonlyMap<string, number>;
   minimums: ReadonlyMap<string, number>;
   starts: ReadonlyMap<string, string>;
+  initials: ReadonlyMap<string, string>;
 }
 
 const productSelect = {
@@ -135,7 +139,6 @@ const productSelect = {
   active: true,
   category: { select: { id: true, name: true } },
 } satisfies Prisma.ProductSelect;
-
 
 const UNIT_KIND: Record<DoseUnit, string> = {
   L: 'volumen (L o ml)',
@@ -409,7 +412,8 @@ export class ProductsService {
    * works out what each one takes from that greenhouse's stock. `allowed` are
    * products already on the log, kept even if they were deactivated since. No
    * movement when there is no dose, or when the log is dated before the
-   * product's start in that greenhouse (that use is already in its count).
+   * product's initial count in that greenhouse (that use is already in it).
+   * Otherwise it always takes stock, even below zero: a later entry evens it.
    */
   async applicationRows(
     inputs: AppliedProductInput[],
@@ -419,12 +423,12 @@ export class ProductsService {
   ): Promise<AppliedProductRow[]> {
     if (!inputs.length) return [];
     const ids = [...new Set(inputs.map((input) => input.productId))];
-    const [products, starts] = await Promise.all([
+    const [products, initials] = await Promise.all([
       this.prisma.product.findMany({
         where: { id: { in: ids } },
         select: { id: true, name: true, unit: true, active: true },
       }),
-      this.startDates(ids, greenhouseId),
+      this.firstDates(ids, StockMovementType.INITIAL, greenhouseId),
     ]);
     const byId = new Map(products.map((product) => [product.id, product]));
 
@@ -443,7 +447,7 @@ export class ProductsService {
       const takesStock =
         input.dose !== null &&
         input.doseUnit !== null &&
-        usesStock(date, starts.get(stockKey(product.id, greenhouseId)));
+        usesStock(date, initials.get(stockKey(product.id, greenhouseId)));
       return {
         productId: product.id,
         product: product.name,
@@ -465,12 +469,13 @@ export class ProductsService {
   }
 
   private async figures(ids: string[]): Promise<StockFigures> {
-    const [stock, minimums, starts] = await Promise.all([
+    const [stock, minimums, starts, initials] = await Promise.all([
       this.stockByKey(ids),
       this.prisma.productGreenhouse.findMany({
         where: { productId: { in: ids } },
       }),
-      this.startDates(ids),
+      this.firstDates(ids),
+      this.firstDates(ids, StockMovementType.INITIAL),
     ]);
     return {
       stock,
@@ -481,6 +486,7 @@ export class ProductsService {
         ]),
       ),
       starts,
+      initials,
     };
   }
 
@@ -519,21 +525,15 @@ export class ProductsService {
     return new Map([...grouped].map(([id, rows]) => [id, averageCost(rows)]));
   }
 
-  /**
-   * First day of each product in each greenhouse: its earliest movement that
-   * is not an application (the initial count, an entry or an adjustment).
-   */
-  private async startDates(
+  /** Earliest movement (of `type`, when given) of each product in each greenhouse. */
+  private async firstDates(
     ids: string[],
+    type?: StockMovementType,
     greenhouseId?: string,
   ): Promise<Map<string, string>> {
     const firsts = await this.prisma.stockMovement.groupBy({
       by: ['productId', 'greenhouseId'],
-      where: {
-        productId: { in: ids },
-        greenhouseId,
-        type: { not: StockMovementType.APPLICATION },
-      },
+      where: { productId: { in: ids }, greenhouseId, type },
       _min: { date: true },
     });
     return new Map(
@@ -569,7 +569,7 @@ export class ProductsService {
     }
   }
 
-  /** Entries and adjustments go between the product's start in that greenhouse and today. */
+  /** Entries and adjustments go between the initial count in that greenhouse (if any) and today. */
   private async assertMovementDate(
     id: string,
     greenhouseId: string,
@@ -578,12 +578,12 @@ export class ProductsService {
     await this.assertProduct(id);
     await this.assertGreenhouses([greenhouseId]);
     this.assertNotFuture(date);
-    const start = (await this.startDates([id], greenhouseId)).get(
-      stockKey(id, greenhouseId),
-    );
-    if (start && date < start) {
+    const initial = (
+      await this.firstDates([id], StockMovementType.INITIAL, greenhouseId)
+    ).get(stockKey(id, greenhouseId));
+    if (initial && date < initial) {
       throw new BadRequestException(
-        `La fecha es anterior al inicio del producto en este invernadero (${start})`,
+        `La fecha es anterior al inventario inicial de este invernadero (${initial})`,
       );
     }
   }
@@ -617,19 +617,19 @@ export function stockKey(productId: string, greenhouseId: string): string {
 }
 
 /**
- * Whether an application on `date` takes stock: only on or after the
- * product's start in that greenhouse. Before it (or with no start yet) the use
- * is already in the count, or there is no stock to take from.
+ * Whether an application on `date` takes stock: always, except before the
+ * product's initial count in that greenhouse, whose figure already includes
+ * that use. Stock may go below zero until the entry is registered.
  */
-export function usesStock(date: string, start: string | undefined): boolean {
-  return start !== undefined && date >= start;
+export function usesStock(date: string, initial: string | undefined): boolean {
+  return initial === undefined || date >= initial;
 }
 
 /** A product's stock in every greenhouse, with 0 where it has no movements. */
 export function greenhouseStocks(
   productId: string,
   greenhouses: GreenhouseRef[],
-  { stock, minimums, starts }: StockFigures,
+  { stock, minimums, starts, initials }: StockFigures,
 ): GreenhouseStock[] {
   return greenhouses.map((greenhouse) => {
     const key = stockKey(productId, greenhouse.id);
@@ -641,6 +641,7 @@ export function greenhouseStocks(
       minStock,
       status: stockStatus(amount, minStock),
       startDate: starts.get(key) ?? null,
+      initialDate: initials.get(key) ?? null,
     };
   });
 }

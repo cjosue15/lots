@@ -30,12 +30,21 @@ export function averageCostOn(
   );
 }
 
-/** Cost of using `quantity` (positive, in the product's unit) on `date`. */
+/**
+ * Cost of using `quantity` (positive, in the product's unit) on `date`. Used
+ * before its first entry (the invoice was registered later, with a later
+ * date), it takes the price of that first entry. Null with no entries at all.
+ */
 export function applicationCost(
   entries: PricedEntry[],
   date: string,
   quantity: number,
 ): number | null {
-  const price = averageCostOn(entries, date);
-  return price === null ? null : round(quantity * price, 2);
+  const first = entries.reduce<string | null>(
+    (min, entry) => (min === null || entry.date < min ? entry.date : min),
+    null,
+  );
+  if (first === null) return null;
+  const price = averageCostOn(entries, date < first ? first : date)!;
+  return round(quantity * price, 2);
 }

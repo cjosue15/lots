@@ -184,7 +184,7 @@ export class CostsService {
 
     return rows.map((row) => ({
       row,
-      // Movements are negative; an application always has a priced initial count before it.
+      // Movements are negative. 0 only while the product has no entry at all.
       cost:
         applicationCost(
           byId.get(row.productId) ?? [],
