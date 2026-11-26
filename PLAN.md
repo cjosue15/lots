@@ -327,12 +327,12 @@ Resultado: **una consulta a Supabase por usuario y por token**, es decir, aproxi
 ## 13. Pendientes antes de construir
 
 - ~~Integración de la autenticación~~: resuelta (§11.1).
-- **Usuarios en `lotes`:** hoy hay 1 `admin` y 1 `employee`. Faltan las cuentas y membresías `employee` de los otros 3 ingenieros.
+- **Usuarios en `lotes`:** hoy hay 1 `admin` y 1 `employee`. Faltan las cuentas y membresías `employee` de los otros 3 ingenieros; las crea el usuario a mano en Supabase.
 - ~~Nombres de las variedades~~: las variedades pasan a la etapa 2.
 - ~~Lista de cultivos~~: los cultivos pasan a la etapa 2.
 - ~~Tipo de detalle de cada acción~~: confirmado (§8), con todos los campos opcionales.
 - ~~Por confirmar: ¿cómo se aplica el fungicida y enraizante?~~ (fase 5): con mochila, dirigido a la base de cada plantín. La vista 3D ya lo muestra así.
-- **Por decidir: ¿juntar "Recibir los plantines" y "Trasplantar"?** (fase 5, §6). Mantenerlas separadas solo sirve si entre la llegada de los plantines y el trasplante pasan días y se quiere medir ese tiempo. Si se trasplantan el mismo día que llegan, es mejor una sola acción, por ejemplo "Recibir y trasplantar los plantines". En ese caso hay que actualizar el seed y `worker-actions.ts`, porque los códigos `recibir-plantines` y `trasplantar` tienen animaciones distintas.
+- ~~Por decidir: ¿juntar "Recibir los plantines" y "Trasplantar"?~~ (fase 5, §6): se quedan como dos acciones separadas.
 
 ## 14. Productos e inventario (etapa 2)
 
@@ -416,8 +416,9 @@ Hoy ya hay productos en uso y nada de lo aplicado antes se puede reconstruir. Po
      `prisma/inventory-template.csv` trae los encabezados. El CSV puede venir separado por comas o por punto y coma (como lo exporta Excel), los encabezados no distinguen mayúsculas ni tildes, y los decimales pueden ir con punto o coma. La unidad acepta L, KG o G (también LT y GR). El stock mínimo vacío vale 0.
    - Un producto que ya existe en la app (creado antes desde la administración) se usa tal cual: su unidad y su categoría deben coincidir con la tabla. Si un nombre de producto o de categoría solo difiere de uno existente en mayúsculas o tildes, se detiene y pide escribirlo igual, para no crear duplicados.
 4. **Desde ese día se registra todo:** cada ingreso y cada aplicación.
-5. **Las aplicaciones con fecha anterior al primer movimiento del producto en el invernadero del lote no tocan el stock.** Se pueden registrar en el historial del lote, pero no descuentan nada, porque ese consumo ya está reflejado en el conteo. Para un producto creado después desde la administración, su primer movimiento en un invernadero es su primer ingreso ahí.
-6. **Unas semanas después se cuenta otra vez.** La diferencia con el stock de la app se corrige con un ajuste y muestra si se está dejando de registrar algo.
+5. **Las aplicaciones con fecha anterior al inventario inicial del invernadero del lote no tocan el stock.** Se pueden registrar en el historial del lote, pero no descuentan nada, porque ese consumo ya está reflejado en el conteo. Los ingresos y ajustes tampoco pueden tener fecha anterior al conteo.
+6. **Toda otra aplicación descuenta, aunque el stock quede negativo.** Es lo normal cuando el producto se usa antes de que se registre la factura: el stock baja, por ejemplo a −2 L, y vuelve a cuadrar al registrar el ingreso. Un stock negativo avisa que falta registrar un ingreso. Para un producto que no se contó en ese invernadero (o creado después desde la administración) no hay fecha límite. Si se usa antes de su primer ingreso, su costo toma el precio de ese ingreso.
+7. **Unas semanas después se cuenta otra vez.** La diferencia con el stock de la app se corrige con un ajuste y muestra si se está dejando de registrar algo.
 
 ### Costo
 
