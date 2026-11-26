@@ -16,8 +16,13 @@ export interface GreenhouseStock {
   stock: number;
   minStock: number;
   status: StockStatus;
-  /** Day of its first movement there; null while it never came in. */
+  /** Day of its first movement there, of any kind; null while it has none. */
   startDate: string | null;
+  /**
+   * Day of its initial count there (go-live). Applications before it don't
+   * touch stock; entries and adjustments can't go before it.
+   */
+  initialDate: string | null;
 }
 
 export interface AdminProduct {
@@ -88,7 +93,7 @@ export interface UpdateProductInput {
 }
 
 /**
- * Whether a greenhouse uses the product: it came in there or has a minimum.
+ * Whether a greenhouse uses the product: it has movements there or a minimum.
  * Only those raise alerts; elsewhere 0 just means it is not used.
  */
 export function usesProduct(stock: GreenhouseStock): boolean {

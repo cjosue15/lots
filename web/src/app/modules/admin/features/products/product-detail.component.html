@@ -179,7 +179,7 @@
                 {{ s.minStock ? amount(p, s.minStock) : 'Sin mínimo' }}
               </td>
               <td hlmTd>
-                {{ s.startDate ? date(s.startDate) : 'Aún no ingresa' }}
+                {{ s.startDate ? date(s.startDate) : 'Sin movimientos' }}
               </td>
               <td hlmTd class="text-end">
                 @if (p.active && stockAlert(s); as alert) {

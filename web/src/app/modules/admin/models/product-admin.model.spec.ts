@@ -6,6 +6,7 @@ const stock = (overrides: Partial<GreenhouseStock>): GreenhouseStock => ({
   minStock: 0,
   status: 'OUT',
   startDate: null,
+  initialDate: null,
   ...overrides,
 });
 

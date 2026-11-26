@@ -55,8 +55,8 @@ abstract class GreenhouseStockForm implements OnInit {
   protected readonly selected = computed<GreenhouseStock | null>(
     () => this.product().greenhouses.find((s) => s.greenhouse.id === this.greenhouseId()) ?? null,
   );
-  /** Entries and adjustments can't go before the product's start there. */
-  protected readonly minDate = computed(() => this.selected()?.startDate ?? undefined);
+  /** Entries and adjustments can't go before the initial count there. */
+  protected readonly minDate = computed(() => this.selected()?.initialDate ?? undefined);
 
   protected readonly greenhouseName = (id: string) =>
     this.product().greenhouses.find((s) => s.greenhouse.id === id)?.greenhouse.name ?? '';
