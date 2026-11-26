@@ -1,8 +1,21 @@
-import { describeDetails, describeLogDetails, describeProduct } from './details';
+import { describeDetails, describeLogDetails, describeProduct, formatAmount } from './details';
+
+describe('formatAmount', () => {
+  it('writes negative stock with a real minus sign', () => {
+    expect(formatAmount(-50, 'G')).toBe('−50 g');
+    expect(formatAmount(2.5, 'L')).toBe('2.5 L');
+  });
+});
 
 describe('describeProduct', () => {
   it('joins the dose and the method that were filled', () => {
-    const p = { productId: null, product: 'Bayfolan', dose: null, doseUnit: null, method: null } as const;
+    const p = {
+      productId: null,
+      product: 'Bayfolan',
+      dose: null,
+      doseUnit: null,
+      method: null,
+    } as const;
     expect(describeProduct(p)).toBe('Bayfolan');
     expect(describeProduct({ ...p, dose: 250, doseUnit: 'ML' })).toBe('Bayfolan: 250 ml');
     expect(describeProduct({ ...p, dose: 1.5, doseUnit: 'MG', method: 'SPRAY' })).toBe(
@@ -13,7 +26,9 @@ describe('describeProduct', () => {
   it('lists products before the other details', () => {
     expect(
       describeLogDetails({
-        products: [{ productId: null, product: 'Urea', dose: null, doseUnit: null, method: 'SYSTEM' }],
+        products: [
+          { productId: null, product: 'Urea', dose: null, doseUnit: null, method: 'SYSTEM' },
+        ],
         details: { humidity: '60%' },
       }),
     ).toEqual(['Urea: por sistema', 'Humedad: 60%']);

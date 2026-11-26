@@ -34,11 +34,18 @@ export const APPLICATION_METHODS: Record<ApplicationMethod, string> = {
   SPRAY: 'Fumigación',
 };
 
-export const DOSE_SYMBOLS: Record<DoseUnit, string> = { L: 'L', ML: 'ml', KG: 'kg', G: 'g', MG: 'mg' };
+export const DOSE_SYMBOLS: Record<DoseUnit, string> = {
+  L: 'L',
+  ML: 'ml',
+  KG: 'kg',
+  G: 'g',
+  MG: 'mg',
+};
 
-/** "2,5 L": an amount with its unit's symbol. */
+/** "2,5 L": an amount with its unit's symbol. Negative stock gets a real minus sign ("−50 g"). */
 export function formatAmount(amount: number, unit: DoseUnit): string {
-  return `${amount.toLocaleString('es-PE', { maximumFractionDigits: 3 })} ${DOSE_SYMBOLS[unit]}`;
+  const text = amount.toLocaleString('es-PE', { maximumFractionDigits: 3 }).replace(/^-/, '−');
+  return `${text} ${DOSE_SYMBOLS[unit]}`;
 }
 
 /** "250 ml": the amount with its unit's symbol. Older logs kept the dose as free text. */
