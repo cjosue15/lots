@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { averageCost, stockStatus } from './products.service.js';
+import {
+  averageCost,
+  greenhouseStocks,
+  stockKey,
+  stockStatus,
+  usesStock,
+} from './products.service.js';
 
 describe('averageCost', () => {
   it('weights entry prices by quantity and ignores outflows', () => {
@@ -29,5 +35,54 @@ describe('stockStatus', () => {
     expect(stockStatus(0, 0)).toBe('OUT');
     expect(stockStatus(0.5, 1)).toBe('LOW');
     expect(stockStatus(1, 1)).toBe('OK');
+  });
+});
+
+describe('usesStock', () => {
+  it('takes stock only on or after the start in that greenhouse', () => {
+    expect(usesStock('2026-12-01', '2026-12-01')).toBe(true);
+    expect(usesStock('2026-12-05', '2026-12-01')).toBe(true);
+    expect(usesStock('2026-11-28', '2026-12-01')).toBe(false);
+  });
+
+  it('takes nothing where the product never came in', () => {
+    expect(usesStock('2026-12-05', undefined)).toBe(false);
+  });
+});
+
+describe('greenhouseStocks', () => {
+  const a = { id: 'a', name: 'Bungalows' };
+  const b = { id: 'b', name: 'Carmen Alto' };
+
+  it('keeps each greenhouse apart, with its own minimum and start', () => {
+    const figures = {
+      stock: new Map([
+        [stockKey('p', 'a'), 1],
+        [stockKey('p', 'b'), 8],
+        [stockKey('other', 'a'), 50],
+      ]),
+      minimums: new Map([
+        [stockKey('p', 'a'), 2],
+        [stockKey('p', 'b'), 2],
+      ]),
+      starts: new Map([[stockKey('p', 'a'), '2026-12-01']]),
+    };
+    expect(greenhouseStocks('p', [a, b], figures)).toEqual([
+      {
+        greenhouse: a,
+        stock: 1,
+        minStock: 2,
+        status: 'LOW',
+        startDate: '2026-12-01',
+      },
+      { greenhouse: b, stock: 8, minStock: 2, status: 'OK', startDate: null },
+    ]);
+  });
+
+  it('lists greenhouses without movements or minimum as empty', () => {
+    const empty = { stock: new Map(), minimums: new Map(), starts: new Map() };
+    expect(greenhouseStocks('p', [a], empty)).toEqual([
+      { greenhouse: a, stock: 0, minStock: 0, status: 'OUT', startDate: null },
+    ]);
   });
 });

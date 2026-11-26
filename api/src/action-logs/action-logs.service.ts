@@ -37,7 +37,7 @@ export class ActionLogsService {
   async create(cycleId: string, body: CreateActionLog, user: AuthUser): Promise<ActionLogResponse> {
     const cycle = await this.prisma.cycle.findUnique({
       where: { id: cycleId },
-      include: { lot: { select: { active: true } } },
+      include: { lot: { select: { active: true, greenhouseId: true } } },
     });
     if (!cycle) {
       throw new NotFoundException('El ciclo no existe');
@@ -70,6 +70,7 @@ export class ActionLogsService {
       products = await this.products.applicationRows(
         this.checkProducts(action.detailType, body.products),
         date,
+        cycle.lot.greenhouseId,
       );
     } else {
       // "Otra acción": free name, optional phase, no extra fields.
@@ -90,7 +91,11 @@ export class ActionLogsService {
         details: details ?? Prisma.DbNull,
         notes: body.notes ?? null,
         userId: user.id,
-        products: { create: products.map((row, order) => productCreate(row, order, date, user.id)) },
+        products: {
+          create: products.map((row, order) =>
+            productCreate(row, order, date, user.id, cycle.lot.greenhouseId),
+          ),
+        },
       },
       select: actionLogSelect,
     });
@@ -103,7 +108,7 @@ export class ActionLogsService {
       where: { id },
       include: {
         action: true,
-        cycle: true,
+        cycle: { include: { lot: { select: { greenhouseId: true } } } },
         products: {
           orderBy: { order: 'asc' },
           select: { productId: true, product: true, dose: true, doseUnit: true, method: true },
@@ -126,6 +131,8 @@ export class ActionLogsService {
       notes: log.notes,
     };
     const after = { ...before };
+    // Applications take stock from their lot's greenhouse, which never changes.
+    const { greenhouseId } = log.cycle.lot;
     if (body.date !== undefined) {
       this.assertDateInCycle(body.date, fromDbDate(log.cycle.startDate), log.cycle.endDate);
       after.date = body.date;
@@ -146,6 +153,7 @@ export class ActionLogsService {
         rows = await this.products.applicationRows(
           this.checkProducts(log.action.detailType, body.products),
           after.date,
+          greenhouseId,
           new Set(log.products.flatMap((p) => (p.productId ? [p.productId] : []))),
         );
         after.products = rows.map(toSnapshot);
@@ -161,7 +169,7 @@ export class ActionLogsService {
     }
     if (body.notes !== undefined) after.notes = body.notes ?? null;
     if (!rows && after.date !== before.date && log.products.length) {
-      rows = await this.reapply(log.products, after.date);
+      rows = await this.reapply(log.products, after.date, greenhouseId);
     }
 
     if (JSON.stringify(before) === JSON.stringify(after)) {
@@ -193,7 +201,9 @@ export class ActionLogsService {
           products: rows
             ? {
                 deleteMany: {},
-                create: rows.map((row, order) => productCreate(row, order, after.date, user.id)),
+                create: rows.map((row, order) =>
+                  productCreate(row, order, after.date, user.id, greenhouseId),
+                ),
               }
             : undefined,
         },
@@ -268,11 +278,13 @@ export class ActionLogsService {
   private async reapply(
     existing: (ProductSnapshot & { productId: string | null })[],
     date: string,
+    greenhouseId: string,
   ): Promise<(AppliedProductRow | ProductSnapshot)[]> {
     const catalog = existing.filter((p) => p.productId);
     const resolved = await this.products.applicationRows(
       catalog.map((p) => ({ ...p, productId: p.productId! })),
       date,
+      greenhouseId,
       new Set(catalog.map((p) => p.productId!)),
     );
     return existing.map((p) => (p.productId ? resolved.shift()! : toSnapshot(p)));
@@ -317,12 +329,13 @@ const toSnapshot = ({ product, dose, doseUnit, method }: ProductSnapshot): Produ
   method,
 });
 
-/** ActionLogProduct create data, with its stock movement when it takes stock. */
+/** ActionLogProduct create data, with its stock movement (from the lot's greenhouse) when it takes stock. */
 function productCreate(
   row: AppliedProductRow | ProductSnapshot,
   order: number,
   date: string,
   userId: string,
+  greenhouseId: string,
 ): Prisma.ActionLogProductCreateWithoutActionLogInput {
   const snapshot = { ...toSnapshot(row), order };
   if (!('productId' in row)) return snapshot;
@@ -336,6 +349,7 @@ function productCreate(
             date: toDbDate(date),
             quantity: row.movement.quantity,
             product: { connect: { id: row.productId } },
+            greenhouse: { connect: { id: greenhouseId } },
             user: { connect: { id: userId } },
           },
         }

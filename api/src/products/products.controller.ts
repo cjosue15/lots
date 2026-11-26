@@ -17,6 +17,8 @@ import {
   CostsService,
 } from './costs.service.js';
 import {
+  type CatalogQuery,
+  catalogQuerySchema,
   type CostQuery,
   costQuerySchema,
   type CreateCategory,
@@ -44,9 +46,12 @@ import {
 export class ProductsController {
   constructor(private readonly products: ProductsService) {}
 
+  /** Stock is the one in the greenhouse of `lotId`. */
   @Get()
-  catalog(): Promise<CatalogProduct[]> {
-    return this.products.catalog();
+  catalog(
+    @Query({ schema: catalogQuerySchema }) query: CatalogQuery,
+  ): Promise<CatalogProduct[]> {
+    return this.products.catalog(query.lotId);
   }
 }
 
@@ -82,9 +87,8 @@ export class AdminProductsController {
   @Post('products')
   create(
     @Body({ schema: createProductSchema }) body: CreateProduct,
-    @CurrentUser() user: AuthUser,
   ): Promise<ProductDetail> {
-    return this.products.create(body, user.id);
+    return this.products.create(body);
   }
 
   @Get('products/:id')
