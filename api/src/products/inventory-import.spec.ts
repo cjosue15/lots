@@ -109,8 +109,25 @@ describe('parseInventory', () => {
     expect(errors).toEqual([
       'Fila 3: Filter está en KG y en la fila 2 en L; un producto tiene una sola unidad',
       'Fila 3: Filter es "Fertilizante" y en la fila 2 "Químico"; un producto tiene una sola categoría',
-      'Fila 4: escribe "Filter" igual que en la fila 2 (aquí dice "FILTER")',
+      'Fila 4: "FILTER" está escrito distinto en la fila 2 ("Filter"); escríbelo igual en todas las filas',
     ]);
+  });
+
+  it('keeps the readable rows and sorts the errors by row', () => {
+    const result = parseInventory(
+      `${HEADER}\nEl Dorado,Filter,Químico,L,1,30,0\nEl Dorado,Filter,Químico,L,2,30,0\nBungalows,Urea,Químico,ML,1,5,0`,
+    );
+    expect(result).toEqual({
+      ok: false,
+      errors: [
+        'Fila 3: Filter en El Dorado ya está en la fila 2',
+        'Fila 4: unidad "ML" no válida (usa L, KG o G)',
+      ],
+      rows: [
+        expect.objectContaining({ line: 2 }),
+        expect.objectContaining({ line: 3 }),
+      ],
+    });
   });
 
   it('fails on an empty file or a table without rows', () => {

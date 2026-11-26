@@ -18,6 +18,7 @@ import {
 } from '../src/generated/prisma/client.js';
 import { todayInPeru, toDbDate } from '../src/common/peru-date.js';
 import {
+  byLine,
   checkInventory,
   parseInventory,
 } from '../src/products/inventory-import.js';
@@ -56,7 +57,8 @@ async function main(): Promise<void> {
     throw new Abort([`No se pudo leer el archivo ${file}`]);
   }
   const parsed = parseInventory(text);
-  if (!parsed.ok) throw new Abort(parsed.errors);
+  // Without readable rows (bad header, empty table) there is nothing to check further.
+  if (!parsed.ok && !parsed.rows.length) throw new Abort(parsed.errors);
   const { rows } = parsed;
 
   const [initials, admin, greenhouses, categories, products] =
@@ -89,7 +91,7 @@ async function main(): Promise<void> {
     ]);
   }
 
-  const errors = checkInventory(rows, {
+  const dbErrors = checkInventory(rows, {
     greenhouses: greenhouses.map((g) => g.name),
     categories: categories.map((c) => c.name),
     products: products
@@ -98,6 +100,7 @@ async function main(): Promise<void> {
       )
       .map((p) => ({ name: p.name, category: p.category.name, unit: p.unit })),
   });
+  const errors = byLine([...(parsed.ok ? [] : parsed.errors), ...dbErrors]);
   if (errors.length) throw new Abort(errors);
 
   const greenhouseIds = new Map(greenhouses.map((g) => [g.name, g.id]));
@@ -158,7 +161,8 @@ async function main(): Promise<void> {
 
   console.log(
     `Inventario inicial cargado al ${date}: ${rows.length} filas, ` +
-      `${created.products} productos y ${created.categories} categorías nuevas.`,
+      `nuevos: ${created.products} ${created.products === 1 ? 'producto' : 'productos'} y ` +
+      `${created.categories} ${created.categories === 1 ? 'categoría' : 'categorías'}.`,
   );
 }
 

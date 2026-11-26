@@ -26,8 +26,13 @@ export interface InventoryContext {
   products: { name: string; category: string; unit: StockUnit }[];
 }
 
+/**
+ * On failure, `rows` still has the rows that could be read, so the database
+ * checks can run on them and every problem is reported in one go.
+ */
 export type ParseResult =
-  { ok: true; rows: InventoryRow[] } | { ok: false; errors: string[] };
+  | { ok: true; rows: InventoryRow[] }
+  | { ok: false; errors: string[]; rows: InventoryRow[] };
 
 const COLUMNS = {
   greenhouse: 'invernadero',
@@ -112,7 +117,8 @@ export function parseCsv(text: string): { line: number; fields: string[] }[] {
  */
 export function parseInventory(text: string): ParseResult {
   const [header, ...records] = parseCsv(text);
-  if (!header) return { ok: false, errors: ['El archivo está vacío'] };
+  if (!header)
+    return { ok: false, errors: ['El archivo está vacío'], rows: [] };
 
   const names = header.fields.map(normalize);
   const index = {} as Record<keyof typeof COLUMNS, number>;
@@ -130,10 +136,11 @@ export function parseInventory(text: string): ParseResult {
       errors: [
         `Faltan columnas: ${missing.join(', ')}. Se esperan: Invernadero, Producto, Categoría, Unidad, Cantidad, Costo unitario, Stock mínimo`,
       ],
+      rows: [],
     };
   }
   if (!records.length)
-    return { ok: false, errors: ['La tabla no tiene filas'] };
+    return { ok: false, errors: ['La tabla no tiene filas'], rows: [] };
 
   const errors: string[] = [];
   const rows: InventoryRow[] = [];
@@ -204,7 +211,7 @@ export function parseInventory(text: string): ParseResult {
       firstOf.set(normalize(row.product), row);
     } else if (first.product !== row.product) {
       errors.push(
-        `Fila ${row.line}: escribe "${first.product}" igual que en la fila ${first.line} (aquí dice "${row.product}")`,
+        `Fila ${row.line}: "${row.product}" está escrito distinto en la fila ${first.line} ("${first.product}"); escríbelo igual en todas las filas`,
       );
     } else {
       if (first.unit !== row.unit) {
@@ -220,7 +227,15 @@ export function parseInventory(text: string): ParseResult {
     }
   }
 
-  return errors.length ? { ok: false, errors } : { ok: true, rows };
+  return errors.length
+    ? { ok: false, errors: byLine(errors), rows }
+    : { ok: true, rows };
+}
+
+/** Sorts "Fila N: …" messages by row, keeping the order within a row. */
+export function byLine(errors: string[]): string[] {
+  const line = (error: string) => Number(/^Fila (\d+):/.exec(error)?.[1] ?? 0);
+  return [...errors].sort((a, b) => line(a) - line(b));
 }
 
 /**
