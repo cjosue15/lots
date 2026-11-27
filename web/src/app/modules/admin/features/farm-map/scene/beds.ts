@@ -280,6 +280,8 @@ export function fallenLeaf(x: number, z: number, i: number, k: number) {
 
 /** Height of a seedling above the ridge. */
 export const SEEDLING_HEIGHT = 0.15;
+/** Size of the seedlings after a few weeks growing (Crecimiento, before the trellis). */
+export const GROWN_SEEDLING_SCALE = 2;
 
 /** Radius of the wet patch of product the sprayer leaves at a seedling's base. */
 export const DRENCH_RADIUS = 0.13;
@@ -326,6 +328,8 @@ export interface BedOptions {
   ridgeWork?: RidgeWork;
   /** Whether producing plants (phase 7) carry fruit; true when left out. */
   fruit?: boolean;
+  /** Seedlings (phase 5) drawn larger, grown for a few weeks. */
+  grown?: boolean;
 }
 
 /**
@@ -406,12 +410,20 @@ export function buildBed(
       ),
     );
 
-  const seedlings = (xs: number[]) =>
+  const seedlings = (xs: number[], scale = 1) =>
     instanced(
       seedlingGeometry(assets),
       seedlingMaterial(assets),
       xs.flatMap((x) =>
-        spotsAlong(depth).map((z) => ({ x, y: ridgeTop, z, ry: rand() * Math.PI * 2 })),
+        spotsAlong(depth).map((z) => ({
+          x,
+          y: ridgeTop,
+          z,
+          ry: rand() * Math.PI * 2,
+          sx: scale,
+          sy: scale,
+          sz: scale,
+        })),
       ),
     );
 
@@ -718,8 +730,9 @@ export function buildBed(
 
   // 5. Seedlings.
   if (phase === 5) {
-    group.add(seedlings(ridgeXs(width)));
-    return { group, height: ridgeTop + SEEDLING_HEIGHT };
+    const scale = options.grown ? GROWN_SEEDLING_SCALE : 1;
+    group.add(seedlings(ridgeXs(width), scale));
+    return { group, height: ridgeTop + SEEDLING_HEIGHT * scale };
   }
 
   // 8. Closing: dead plants, dry and yellow, some still standing (tilted) and

@@ -83,6 +83,8 @@ export interface WorkerAction {
   drip?: boolean;
   /** Producing plants drawn still without fruit (production just starting). */
   noFruit?: boolean;
+  /** Seedlings drawn larger, grown for a few weeks (see GROWN_SEEDLING_SCALE). */
+  grown?: boolean;
   /**
    * Work done on the first ridge, which also sets how the whole bed looks
    * while the worker is on it, whatever the cycle's phase (see RidgeWork).
@@ -202,6 +204,9 @@ export const WORKER_ACTIONS: Readonly<Record<string, WorkerAction>> = {
     ridge: 'plant-seedlings',
   },
   // 6. Crecimiento
+  // The seedlings growing, not tied up yet: twice their size, still without
+  // strings, and the worker walks along checking them.
+  crecimiento: { motion: 'inspect', props: ['clipboard'], phase: 5, grown: true },
   'iniciar-tutorado': { motion: 'lift', props: [], phase: 6, ridge: 'tie-plants' },
   // 7. Producción
   // Through the drip tape like the nematicide, among plants just starting to

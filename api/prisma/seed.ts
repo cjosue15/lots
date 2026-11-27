@@ -81,6 +81,7 @@ const PHASES: [name: string, actions: ActionSeed[]][] = [
   [
     'Crecimiento',
     [
+      ['crecimiento', 'Crecimiento', NONE],
       ['iniciar-tutorado', 'Iniciar el tutorado', NONE],
     ],
   ],

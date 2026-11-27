@@ -175,6 +175,7 @@ export class FarmScene {
           seed: lot.number * 7919 + gh.name.length,
           ridgeWork: action?.ridge,
           fruit: !action?.noFruit,
+          grown: action?.grown,
         });
         group.position.set(x, 0, z);
         this.content.add(group);
