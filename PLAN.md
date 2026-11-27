@@ -66,7 +66,7 @@ Que los ingenieros registren desde el celular **lo que se hizo hoy en cada lote*
 | 3 | Instalación | Instalar la cinta de riego con goteros · Colocar el plástico mush · Aplicar nematicida por riego |
 | 4 | Descomposición | Regar interdiario para descomponer el guano y la broza (10 a 15 días) |
 | 5 | Plantines | Recibir los plantines · Trasplantar (en la primera hoja). El fungicida y enraizante (3 a 4 días después del trasplante) se registra con la acción general |
-| 6 | Crecimiento | Iniciar el tutorado (con la 5.ª hoja, unos 20 días después) · Limpiar la planta (diario o interdiario) |
+| 6 | Crecimiento | Iniciar el tutorado (con la 5.ª hoja, unos 20 días después). Limpiar la planta (diario o interdiario) se registra con la acción general |
 | 7 | Producción | Aplicar fertilizante de producción (3 veces por semana) · Evaluar fertilizantes (a los 35 días) · Iniciar la cosecha |
 | 8 | Cierre del ciclo | Aplicar nematicida por riego (una sola inyección) · Arrancar la planta de raíz · Cortar la raíz y botarla · Dejar secar la planta (3 a 5 días) · Retirar los pepinillos amarillos (fruto) y bajar la planta fuera del lote |
 
@@ -80,6 +80,7 @@ Se registran el día en que se hacen. **No cambian la fase** y en esta etapa no 
 - Foliares (habitualmente los viernes)
 - Riego y registro de humedad (interdiario)
 - Control de calidad
+- Limpiar la planta (diario o interdiario, desde Crecimiento): se le sacan las hojas viejas de abajo, que no la dejan crecer bien. En la vista 3D, en un lote en Producción las plantas se ven altas y con fruto; en las otras fases, como en Crecimiento
 
 ## 7. Cálculo de la fase actual
 
@@ -230,7 +231,7 @@ Página `/admin/map` (pestaña "Vista 3D"), solo para el admin, hecha con three.
     - `trasplantar` (`plant-seedlings`): las otras filas ya tienen sus plantines; el trabajador, arrodillado con la caja en el suelo, planta la primera uno por uno. El plantín es un cubo de sustrato con dos tallos y hojas anchas (`scene/seedling.ts`).
     - `fungicida-general` en un lote en Plantines (fase 5) (`drench-seedlings`): el fungicida y enraizante de 3 a 4 días después del trasplante se registra con la acción general, y la vista lo dibuja así: las otras filas ya tienen una mancha húmeda de producto en la base de cada plantín. En la primera el trabajador, con la mochila y desde el borde del lote, se detiene en cada plantín, apunta la lanza a su base y la rocía hasta que se moja el plástico alrededor.
     - `iniciar-tutorado` (`tie-plants`): pitas ya colgadas del alambre; las otras filas tienen sus plantas jóvenes paradas en su pita. En la primera las plantas están echadas sobre el plástico y el trabajador, de cara a la fila, se agacha en cada una, la levanta y la amarra arriba. El lote se dibuja como en la fase 6.
-    - `limpiar-planta` (`prune-leaves`): plantas en crecimiento; en las otras filas ya están limpias, con el tallo pelado abajo y sus hojas viejas (amarillentas) tiradas sobre el plástico. En la primera el trabajador, agachado de cara a la fila, corta con tijera las 3 hojas viejas de cada planta, que caen al plástico, y pasa a la siguiente.
+    - `limpiar-planta` (`prune-leaves`, acción general): plantas en crecimiento; en las otras filas ya están limpias, con el tallo pelado abajo y sus hojas viejas (amarillentas) tiradas sobre el plástico. En la primera el trabajador, agachado de cara a la fila, corta con tijera las 3 hojas viejas de cada planta, que caen al plástico, y pasa a la siguiente.
     - `fertilizante-produccion` (`drip`): igual que el nematicida, con gotas blancas, entre las plantas que empiezan a producir (fase 7, con flores y todavía sin pepinos).
     - `evaluar-fertilizantes` (`note`): el trabajador recorre el pasillo planta por planta; en cada una se voltea, la mira de abajo arriba levantando una hoja y anota con lápiz en su tablilla.
     - `cosecha` (`harvest-fruit`): plantas en producción; en las otras filas ya se cosechó y solo quedan pepinos chicos. En la primera el trabajador, de cara a la fila, alcanza cada pepino maduro, lo arranca y lo pone en la canasta, que se va llenando.
@@ -333,6 +334,9 @@ Resultado: **una consulta a Supabase por usuario y por token**, es decir, aproxi
 - ~~Tipo de detalle de cada acción~~: confirmado (§8), con todos los campos opcionales.
 - ~~Por confirmar: ¿cómo se aplica el fungicida y enraizante?~~ (fase 5): con mochila, dirigido a la base de cada plantín. La vista 3D ya lo muestra así.
 - ~~Por decidir: ¿juntar "Recibir los plantines" y "Trasplantar"?~~ (fase 5, §6): se quedan como dos acciones separadas.
+- **Por analizar: fecha de inicio de un ciclo con fecha pasada.** Al registrar una acción, la fecha va del inicio del ciclo a hoy, así que una acción olvidada se puede registrar después con su fecha real. Pero el botón "Iniciar ciclo" siempre usa la fecha de hoy. Si el ciclo se inicia tarde, por un olvido o al salir a producción con lotes que ya llevan semanas, no se puede registrar nada anterior a ese día.
+  - Posible solución: un campo "Fecha de inicio" en el diálogo de "Iniciar ciclo", con hoy por defecto, sin fechas futuras y sin fechas anteriores al inicio del ciclo anterior.
+  - La API ya acepta `startDate` al crear el ciclo y valida ese límite. Solo falta el campo en la web.
 
 ## 14. Productos e inventario (etapa 2)
 

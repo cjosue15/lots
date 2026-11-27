@@ -24,7 +24,8 @@ import {
   TIED_PLANT_HEIGHT,
   fallenLeaf,
   FALLEN_LEAF_SIZE,
-  GROWING_PLANT_HEIGHT,
+  pruneHeight,
+  PRODUCTION_PHASE,
   PRUNE_HEIGHT,
   CUT_LEAVES,
   cucumberGeometry,
@@ -971,7 +972,10 @@ export class Worker {
   }
 
   /** What changes on the first ridge; matches what buildBed draws on the others. */
-  private buildRidgeWork(work: RidgeWork, bed: { width: number; depth: number }): RidgeProgress {
+  private buildRidgeWork(
+    work: RidgeWork,
+    bed: { width: number; depth: number; phase: number | null },
+  ): RidgeProgress {
     const length = ridgeLength(bed.depth);
     const depth = bed.depth;
     const x = ridgeXs(bed.width)[0];
@@ -991,7 +995,7 @@ export class Worker {
     }
 
     if (work === 'prune-leaves') {
-      return this.pruneWork(x, ground + RIDGE_HEIGHT, length, depth);
+      return this.pruneWork(x, ground + RIDGE_HEIGHT, length, depth, bed.phase);
     }
 
     if (work === 'tie-plants') {
@@ -1330,7 +1334,13 @@ export class Worker {
    * uncut, 1 once its old leaves lie on the plastic. The plant being cleaned is
    * drawn already cut, with its lower leaves as loose meshes falling off.
    */
-  private pruneWork(x: number, top: number, length: number, depth: number): RidgeProgress {
+  private pruneWork(
+    x: number,
+    top: number,
+    length: number,
+    depth: number,
+    phase: number | null,
+  ): RidgeProgress {
     const spots = seedlingsAlong(depth);
     const n = spots.length;
     const material = plantMaterial(this.assets);
@@ -1338,10 +1348,12 @@ export class Worker {
       new THREE.Matrix4()
         .makeTranslation(x, top, spots[i])
         .multiply(new THREE.Matrix4().makeRotationY(i * 2.1));
-    const options = { flowers: 0.2 };
+    // In Producción the plants are taller, with more flowers (the bed draws their fruit).
+    const height = pruneHeight(phase);
+    const options = { flowers: phase === PRODUCTION_PHASE ? 0.45 : 0.2 };
     // Uncut plants are ahead, so listed from the front: `count` keeps them.
     const uncut = new THREE.InstancedMesh(
-      cucumberPlantGeometry(this.assets, 0, GROWING_PLANT_HEIGHT, {
+      cucumberPlantGeometry(this.assets, 0, height, {
         ...options,
         old: PRUNE_HEIGHT,
       }),
@@ -1349,7 +1361,7 @@ export class Worker {
       n,
     );
     const cleaned = new THREE.InstancedMesh(
-      cucumberPlantGeometry(this.assets, 0, GROWING_PLANT_HEIGHT, {
+      cucumberPlantGeometry(this.assets, 0, height, {
         ...options,
         bare: PRUNE_HEIGHT,
       }),
@@ -1378,7 +1390,7 @@ export class Worker {
     }
 
     // The old leaves of the plant being cleaned, from the plant to the plastic.
-    const onPlant = cutLeaves(0, GROWING_PLANT_HEIGHT, PRUNE_HEIGHT).slice(0, CUT_LEAVES);
+    const onPlant = cutLeaves(0, height, PRUNE_HEIGHT).slice(0, CUT_LEAVES);
     const loose = onPlant.map(() => {
       const mesh = new THREE.Mesh(leafGeometry, material);
       mesh.matrixAutoUpdate = false;

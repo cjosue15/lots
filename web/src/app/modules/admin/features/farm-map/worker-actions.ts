@@ -202,7 +202,6 @@ export const WORKER_ACTIONS: Readonly<Record<string, WorkerAction>> = {
   },
   // 6. Crecimiento
   'iniciar-tutorado': { motion: 'lift', props: [], phase: 6, ridge: 'tie-plants' },
-  'limpiar-planta': { motion: 'prune', props: ['scissors'], phase: 6, ridge: 'prune-leaves' },
   // 7. Producción
   // Through the drip tape like the nematicide, among plants just starting to
   // produce: flowers, no fruit yet.
@@ -236,6 +235,9 @@ export const WORKER_ACTIONS: Readonly<Record<string, WorkerAction>> = {
   // the soil moisture on a clipboard.
   'riego-humedad': { motion: 'note', props: ['clipboard', 'pencil'], drip: true },
   'control-calidad': { motion: 'inspect', props: ['clipboard'] },
+  // General, from Crecimiento on: drawn among growing plants, or among
+  // producing ones in Producción (see PRUNE_IN_PRODUCTION).
+  'limpiar-planta': { motion: 'prune', props: ['scissors'], phase: 6, ridge: 'prune-leaves' },
 };
 
 /** Plantines: the phase where the general fungicide goes on the new seedlings. */
@@ -251,6 +253,18 @@ export const FUNGICIDE_ON_SEEDLINGS: WorkerAction = {
   tint: PRODUCT.fungicide,
   phase: SEEDLINGS_PHASE,
   ridge: 'drench-seedlings',
+};
+
+/** Producción: plants with fruit. */
+const PRODUCTION_PHASE = 7;
+
+/**
+ * Cleaning the plants (a general action) on a lot in Producción: the same
+ * work among taller plants that keep their fruit.
+ */
+export const PRUNE_IN_PRODUCTION: WorkerAction = {
+  ...WORKER_ACTIONS['limpiar-planta'],
+  phase: PRODUCTION_PHASE,
 };
 
 export function workerActionFor(code: string | null | undefined): WorkerAction | null {
@@ -271,6 +285,9 @@ export function lotWorkerAction(
   const todays = cycle.lastLog?.date === today ? workerActionFor(cycle.lastLog.code) : null;
   if (todays === WORKER_ACTIONS['fungicida-general'] && cycle.phase?.order === SEEDLINGS_PHASE) {
     return FUNGICIDE_ON_SEEDLINGS;
+  }
+  if (todays === WORKER_ACTIONS['limpiar-planta'] && cycle.phase?.order === PRODUCTION_PHASE) {
+    return PRUNE_IN_PRODUCTION;
   }
   return todays ?? workerActionFor(cycle.lastPhaseLog?.code);
 }

@@ -1,5 +1,6 @@
 import {
   FUNGICIDE_ON_SEEDLINGS,
+  PRUNE_IN_PRODUCTION,
   WORKER_ACTIONS,
   lotWorkerAction,
   workerActionFor,
@@ -60,5 +61,16 @@ describe('lotWorkerAction', () => {
     });
     expect(lotWorkerAction(fungicide(5), today)).toBe(FUNGICIDE_ON_SEEDLINGS);
     expect(lotWorkerAction(fungicide(7), today)).toBe(WORKER_ACTIONS['fungicida-general']);
+  });
+
+  it('cleans producing plants in Producción and growing ones otherwise', () => {
+    const cleaning = (order: number) => ({
+      lastLog: log('limpiar-planta', today),
+      lastPhaseLog: log('iniciar-tutorado', '2026-11-20'),
+      phase: phase(order),
+    });
+    expect(lotWorkerAction(cleaning(7), today)).toBe(PRUNE_IN_PRODUCTION);
+    expect(PRUNE_IN_PRODUCTION).toMatchObject({ phase: 7, ridge: 'prune-leaves' });
+    expect(lotWorkerAction(cleaning(6), today)).toBe(WORKER_ACTIONS['limpiar-planta']);
   });
 });

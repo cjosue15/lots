@@ -150,6 +150,8 @@ export const TIED_PLANT_HEIGHT = 0.7;
 
 /** Height of the plants in production (phase 7). */
 export const PRODUCING_PLANT_HEIGHT = 1.9;
+/** Producción: the phase whose plants carry fruit. */
+export const PRODUCTION_PHASE = 7;
 
 export function cucumberGeometry(assets: SceneAssets): THREE.BufferGeometry {
   return assets.geometry('cucumber', () => new THREE.CapsuleGeometry(0.04, 0.22, 3, 6));
@@ -259,6 +261,10 @@ export function discardedCucumber(width: number, z: number, i: number, k: number
 export const GROWING_PLANT_HEIGHT = 1.2;
 /** Leaves below this height are cut off when cleaning the plants. */
 export const PRUNE_HEIGHT = 0.5;
+/** Height of the plants being cleaned: growing ones, or producing ones in Producción. */
+export function pruneHeight(phase: number | null): number {
+  return phase === PRODUCTION_PHASE ? PRODUCING_PLANT_HEIGHT : GROWING_PLANT_HEIGHT;
+}
 /** Leaves cut from each plant (the nodes below PRUNE_HEIGHT). */
 export const CUT_LEAVES = 3;
 /** Size of a cut leaf lying on the plastic. */
@@ -555,16 +561,37 @@ export function buildBed(
       );
       return { group, height: WIRE_HEIGHT + 0.05 };
     } else if (work === 'prune-leaves') {
-      // Growing plants; the others already cleaned, their leaves on the plastic.
+      // Growing plants, or producing ones (with their fruit) when cleaned in
+      // Producción; the others already cleaned, their leaves on the plastic.
+      const producing = phase === PRODUCTION_PHASE;
       ridges(() => true);
       group.add(tapes(ridgeXs(width)), ...trellis(ridgeXs(width)));
       group.add(
         ...cucumberPlants(
           others.flatMap((x) => spotsAlong(depth).map((z) => ({ x, z }))),
-          GROWING_PLANT_HEIGHT,
-          { flowers: 0.2, bare: PRUNE_HEIGHT },
+          pruneHeight(phase),
+          { flowers: producing ? 0.45 : 0.2, bare: PRUNE_HEIGHT },
         ),
       );
+      if (producing) {
+        // On every ridge, the first one's too: the fruit stays on the plant.
+        group.add(
+          instanced(
+            cucumberGeometry(assets),
+            cucumberMaterial(assets),
+            ridgeXs(width).flatMap((x) =>
+              spotsAlong(depth).flatMap((z, i) =>
+                ripeCucumbers(i).map((c) => ({
+                  x: x + c.dx,
+                  y: ridgeTop + c.dy,
+                  z: z + c.dz,
+                  rz: c.rz,
+                })),
+              ),
+            ),
+          ),
+        );
+      }
       group.add(
         instanced(
           cucumberLeafGeometry(assets),
