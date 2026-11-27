@@ -1,147 +1,206 @@
 <div class="mx-auto w-full max-w-3xl">
-<a
-  routerLink="/"
-  class="-ml-1 inline-flex items-center gap-1 rounded-md px-1 py-1 text-sm text-muted-foreground hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
->
-  <ng-icon name="lucideChevronLeft" size="16" aria-hidden="true" />
-  Lotes
-</a>
+  <a
+    routerLink="/"
+    class="-ml-1 inline-flex items-center gap-1 rounded-md px-1 py-1 text-sm text-muted-foreground hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+  >
+    <ng-icon name="lucideChevronLeft" size="16" aria-hidden="true" />
+    Lotes
+  </a>
 
-@if (lot.isLoading() && !lot.hasValue()) {
-  <div class="mt-4 flex flex-col gap-3" aria-busy="true" aria-label="Cargando lote">
-    <hlm-skeleton class="h-8 w-40" />
-    <hlm-skeleton class="h-28 w-full rounded-lg" />
-    <hlm-skeleton class="h-20 w-full rounded-lg" />
-  </div>
-} @else if (lot.error()) {
-  <div class="mt-4 rounded-lg border bg-card p-4">
-    <p class="font-medium">No se pudo cargar el lote.</p>
-    <p class="mt-1 text-sm text-muted-foreground">Revisa tu conexión y vuelve a intentarlo.</p>
-    <button hlmBtn variant="outline" class="mt-4" (click)="lot.reload()">Reintentar</button>
-  </div>
-} @else if (lot.value(); as lot) {
-  <p class="mt-3 text-sm text-muted-foreground">{{ lot.greenhouse.name }}</p>
-  <h1 class="text-2xl font-semibold">Lote {{ lot.number }}</h1>
+  @if (lot.isLoading() && !lot.hasValue()) {
+    <div class="mt-4 flex flex-col gap-3" aria-busy="true" aria-label="Cargando lote">
+      <hlm-skeleton class="h-8 w-40" />
+      <hlm-skeleton class="h-28 w-full rounded-lg" />
+      <hlm-skeleton class="h-20 w-full rounded-lg" />
+    </div>
+  } @else if (lot.error()) {
+    <div class="mt-4 rounded-lg border bg-card p-4">
+      <p class="font-medium">No se pudo cargar el lote.</p>
+      <p class="mt-1 text-sm text-muted-foreground">Revisa tu conexión y vuelve a intentarlo.</p>
+      <button hlmBtn variant="outline" class="mt-4" (click)="lot.reload()">Reintentar</button>
+    </div>
+  } @else if (lot.value(); as lot) {
+    <p class="mt-3 text-sm text-muted-foreground">{{ lot.greenhouse.name }}</p>
+    <h1 class="text-2xl font-semibold">Lote {{ lot.number }}</h1>
 
-  @if (lot.cycle; as cycle) {
-    <!-- Active cycle -->
-    <section class="mt-4 rounded-lg border bg-card p-4" aria-label="Ciclo activo">
-      <div class="flex items-baseline justify-between gap-2">
-        <h2 class="font-semibold">Ciclo {{ cycle.number }}</h2>
-        <p class="text-sm text-muted-foreground tabular-nums">
-          Desde {{ formatDay(cycle.startDate) }}, día {{ cycle.days }}
-        </p>
-      </div>
-      <p class="mt-3 text-lg font-medium">
-        @if (cycle.phase; as phase) {
-          {{ phase.name }}
-          <span class="text-sm font-normal text-muted-foreground">fase {{ phase.order }} de {{ totalPhases }}</span>
-        } @else {
-          Sin registros de fase
-        }
-      </p>
-      <app-phase-bar class="mt-2" [order]="cycle.phase?.order ?? null" />
-      @if (cycle.todayGeneral.length) {
-        <!-- The 3 most recent general actions of today (newest first). -->
-        <p class="mt-2 text-sm font-medium">Hoy:</p>
-        <ul class="list-disc pl-5 text-sm font-medium">
-          @for (name of cycle.todayGeneral.slice(0, 3); track name) {
-            <li>{{ name }}</li>
+    @if (lot.cycle; as cycle) {
+      <!-- Active cycle -->
+      <section class="mt-4 rounded-lg border bg-card p-4" aria-label="Ciclo activo">
+        <div class="flex items-baseline justify-between gap-2">
+          <h2 class="font-semibold">Ciclo {{ cycle.number }}</h2>
+          <p class="text-sm text-muted-foreground tabular-nums">
+            Desde {{ formatDay(cycle.startDate) }}, día {{ cycle.days }}
+          </p>
+        </div>
+        <p class="mt-3 text-lg font-medium">
+          @if (cycle.phase; as phase) {
+            {{ phase.name }}
+            <span class="text-sm font-normal text-muted-foreground"
+              >fase {{ phase.order }} de {{ totalPhases }}</span
+            >
+          } @else {
+            Sin registros de fase
           }
-        </ul>
-        @if (cycle.todayGeneral.length > 3) {
-          <p class="pl-5 text-sm text-muted-foreground">+{{ cycle.todayGeneral.length - 3 }} más</p>
+        </p>
+        <app-phase-bar class="mt-2" [order]="cycle.phase?.order ?? null" />
+        @if (cycle.todayGeneral.length) {
+          <!-- The 3 most recent general actions of today (newest first). -->
+          <p class="mt-2 text-sm font-medium">Hoy:</p>
+          <ul class="list-disc pl-5 text-sm font-medium">
+            @for (name of cycle.todayGeneral.slice(0, 3); track name) {
+              <li>{{ name }}</li>
+            }
+          </ul>
+          @if (cycle.todayGeneral.length > 3) {
+            <p class="pl-5 text-sm text-muted-foreground">
+              +{{ cycle.todayGeneral.length - 3 }} más
+            </p>
+          }
         }
-      }
 
-      <div class="mt-5 flex flex-col gap-2 sm:flex-row">
-        <a hlmBtn [routerLink]="['/lots', lot.id, 'log']" class="h-11 text-base sm:px-5">
-          <ng-icon name="lucidePlus" size="18" aria-hidden="true" />
-          Registrar acción
-        </a>
+        <div class="mt-5 flex flex-col gap-2 sm:flex-row">
+          <a hlmBtn [routerLink]="['/lots', lot.id, 'log']" class="h-11 text-base sm:px-5">
+            <ng-icon name="lucidePlus" size="18" aria-hidden="true" />
+            Registrar acción
+          </a>
 
+          <hlm-alert-dialog>
+            <button
+              hlmAlertDialogTrigger
+              hlmBtn
+              variant="outline"
+              class="h-11 w-full text-base sm:w-auto"
+              [disabled]="startingCycle()"
+              (click)="resetStartDate()"
+            >
+              @if (startingCycle()) {
+                <hlm-spinner aria-label="Iniciando ciclo" />
+              } @else {
+                <ng-icon name="lucideRefreshCw" size="16" aria-hidden="true" />
+              }
+              Nuevo ciclo
+            </button>
+            <hlm-alert-dialog-content *hlmAlertDialogPortal="let ctx">
+              <hlm-alert-dialog-header>
+                <h2 hlmAlertDialogTitle>¿Iniciar el ciclo {{ nextCycleNumber() }}?</h2>
+                <p hlmAlertDialogDescription>
+                  El ciclo {{ cycle.number }} se cerrará en la fecha de inicio del nuevo y los
+                  registros nuevos irán al ciclo {{ nextCycleNumber() }}.
+                </p>
+              </hlm-alert-dialog-header>
+              <hlm-field class="py-2">
+                <label hlmFieldLabel for="cycle-start">Fecha de inicio</label>
+                <app-date-field
+                  inputId="cycle-start"
+                  [formControl]="startDate"
+                  [min]="minStartDate()"
+                  [max]="today"
+                />
+                <hlm-field-error validator="required">Elige la fecha de inicio.</hlm-field-error>
+                <hlm-field-error validator="min">
+                  Elige el {{ formatDay(minStartDate()!) }} o una fecha posterior.
+                </hlm-field-error>
+                <hlm-field-error validator="max">No puede ser posterior a hoy.</hlm-field-error>
+              </hlm-field>
+              <hlm-alert-dialog-footer>
+                <button hlmAlertDialogCancel>Cancelar</button>
+                <button hlmAlertDialogAction (click)="startCycle(ctx)">
+                  Iniciar ciclo {{ nextCycleNumber() }}
+                </button>
+              </hlm-alert-dialog-footer>
+            </hlm-alert-dialog-content>
+          </hlm-alert-dialog>
+        </div>
+      </section>
+
+      <!-- Logs of the active cycle -->
+      <section class="mt-8" aria-labelledby="logs-title">
+        <h2 id="logs-title" class="px-1 text-lg font-semibold">Registros del ciclo</h2>
+
+        <app-log-list
+          [logs]="lot.logs"
+          emptyTitle="Aún no hay registros en este ciclo."
+          emptyHint='Usa "Registrar acción" para anotar lo que se hizo hoy.'
+        />
+      </section>
+    } @else {
+      <!-- No active cycle yet -->
+      <div class="mt-4 rounded-lg border border-dashed p-6 text-center">
+        <p class="font-medium">Este lote aún no tiene ciclo.</p>
+        <p class="mt-1 text-sm text-muted-foreground">
+          Inicia el ciclo {{ nextCycleNumber() }} para empezar a registrar acciones.
+        </p>
         <hlm-alert-dialog>
           <button
             hlmAlertDialogTrigger
             hlmBtn
-            variant="outline"
-            class="h-11 w-full text-base sm:w-auto"
+            class="mt-4 h-11 text-base"
             [disabled]="startingCycle()"
+            (click)="resetStartDate()"
           >
             @if (startingCycle()) {
               <hlm-spinner aria-label="Iniciando ciclo" />
-            } @else {
-              <ng-icon name="lucideRefreshCw" size="16" aria-hidden="true" />
             }
-            Nuevo ciclo
+            Iniciar ciclo {{ nextCycleNumber() }}
           </button>
           <hlm-alert-dialog-content *hlmAlertDialogPortal="let ctx">
             <hlm-alert-dialog-header>
               <h2 hlmAlertDialogTitle>¿Iniciar el ciclo {{ nextCycleNumber() }}?</h2>
               <p hlmAlertDialogDescription>
-                El ciclo {{ cycle.number }} se cerrará hoy y los registros nuevos irán al ciclo
-                {{ nextCycleNumber() }}.
+                Si el cultivo empezó antes, elige ese día para poder registrar lo que se hizo desde
+                entonces.
               </p>
             </hlm-alert-dialog-header>
+            <hlm-field class="py-2">
+              <label hlmFieldLabel for="cycle-start">Fecha de inicio</label>
+              <app-date-field
+                inputId="cycle-start"
+                [formControl]="startDate"
+                [min]="minStartDate()"
+                [max]="today"
+              />
+              <hlm-field-error validator="required">Elige la fecha de inicio.</hlm-field-error>
+              <hlm-field-error validator="max">No puede ser posterior a hoy.</hlm-field-error>
+            </hlm-field>
             <hlm-alert-dialog-footer>
               <button hlmAlertDialogCancel>Cancelar</button>
-              <button hlmAlertDialogAction (click)="ctx.close(); startCycle()">
+              <button hlmAlertDialogAction (click)="startCycle(ctx)">
                 Iniciar ciclo {{ nextCycleNumber() }}
               </button>
             </hlm-alert-dialog-footer>
           </hlm-alert-dialog-content>
         </hlm-alert-dialog>
       </div>
-    </section>
+    }
 
-    <!-- Logs of the active cycle -->
-    <section class="mt-8" aria-labelledby="logs-title">
-      <h2 id="logs-title" class="px-1 text-lg font-semibold">Registros del ciclo</h2>
-
-      <app-log-list
-        [logs]="lot.logs"
-        emptyTitle="Aún no hay registros en este ciclo."
-        emptyHint='Usa "Registrar acción" para anotar lo que se hizo hoy.'
-      />
-    </section>
-  } @else {
-    <!-- No active cycle yet -->
-    <div class="mt-4 rounded-lg border border-dashed p-6 text-center">
-      <p class="font-medium">Este lote aún no tiene ciclo.</p>
-      <p class="mt-1 text-sm text-muted-foreground">
-        Inicia el ciclo {{ nextCycleNumber() }} para empezar a registrar acciones.
-      </p>
-      <button hlmBtn class="mt-4 h-11 text-base" [disabled]="startingCycle()" (click)="startCycle()">
-        @if (startingCycle()) {
-          <hlm-spinner aria-label="Iniciando ciclo" />
-        }
-        Iniciar ciclo {{ nextCycleNumber() }}
-      </button>
-    </div>
-  }
-
-  @if (closedCycles().length) {
-    <section class="mt-10" aria-labelledby="history-title">
-      <h2 id="history-title" class="px-1 text-lg font-semibold">Ciclos anteriores</h2>
-      <ul class="mt-3 divide-y overflow-hidden rounded-lg border bg-card">
-        @for (past of closedCycles(); track past.id) {
-          <li>
-            <a
-              [routerLink]="['/cycles', past.id]"
-              class="flex items-center gap-3 px-4 py-3 hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
-            >
-              <span class="min-w-0 flex-1">
-                <span class="block font-medium">Ciclo {{ past.number }}</span>
-                <span class="block text-sm text-muted-foreground tabular-nums">
-                  {{ formatDay(past.startDate) }} al {{ formatDay(past.endDate!) }}, {{ past.days }} días
+    @if (closedCycles().length) {
+      <section class="mt-10" aria-labelledby="history-title">
+        <h2 id="history-title" class="px-1 text-lg font-semibold">Ciclos anteriores</h2>
+        <ul class="mt-3 divide-y overflow-hidden rounded-lg border bg-card">
+          @for (past of closedCycles(); track past.id) {
+            <li>
+              <a
+                [routerLink]="['/cycles', past.id]"
+                class="flex items-center gap-3 px-4 py-3 hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+              >
+                <span class="min-w-0 flex-1">
+                  <span class="block font-medium">Ciclo {{ past.number }}</span>
+                  <span class="block text-sm text-muted-foreground tabular-nums">
+                    {{ formatDay(past.startDate) }} al {{ formatDay(past.endDate!) }},
+                    {{ past.days }} días
+                  </span>
                 </span>
-              </span>
-              <ng-icon name="lucideChevronRight" size="16" class="shrink-0 text-muted-foreground" aria-hidden="true" />
-            </a>
-          </li>
-        }
-      </ul>
-    </section>
+                <ng-icon
+                  name="lucideChevronRight"
+                  size="16"
+                  class="shrink-0 text-muted-foreground"
+                  aria-hidden="true"
+                />
+              </a>
+            </li>
+          }
+        </ul>
+      </section>
+    }
   }
-}
 </div>
