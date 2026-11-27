@@ -41,7 +41,7 @@ Que los ingenieros registren desde el celular **lo que se hizo hoy en cada lote*
 
 - **4 ingenieros** y **1 administrador**.
 - Los ingenieros rotan dentro de cada invernadero, así que **todos ven y pueden registrar en todos los lotes**.
-- Cada ingeniero **edita solo los registros que él creó**. El administrador puede editar todos.
+- Cada ingeniero **edita y anula solo los registros que él creó**. El administrador puede editar y anular todos (§9, "Anular un registro").
 - El responsable de un registro es siempre el ingeniero que inició sesión.
 - **Autenticación:** se usa el proyecto de Supabase `invernadero-auth`, que ya comparten las demás apps. El detalle está en §11.1.
 - **Roles:** vienen de `public.application_memberships` con `application_id = 'lotes'`. `employee` equivale a ingeniero y `admin` a administrador. Un usuario sin membresía en `lotes` recibe 403.
@@ -90,14 +90,15 @@ Se registran el día en que se hacen. **No cambian la fase** y en esta etapa no 
 ```
 fase_actual(ciclo):
   si ciclo.estado = cerrado     → "Ciclo cerrado"
-  registros = registros del ciclo con fase_id no vacía
-              (excluye acciones generales y "Otra acción" sin fase)
+  registros = registros del ciclo con fase_id no vacía y sin anular
+              (excluye acciones generales, "Otra acción" sin fase y anulados)
   si no hay registros           → "Sin registros"
   devolver la fase con mayor `orden` entre esos registros
 ```
 
 - Se calcula al consultar y no se guarda. Con 24 lotes es instantáneo y nunca se desincroniza.
 - Un registro tardío de una fase anterior no hace retroceder la fase.
+- **La fase solo retrocede al anular un registro** (§9): si se anula el único registro de la fase más alta, el lote vuelve a la fase más alta que le quede. Así se corrige una acción registrada por error en una fase posterior.
 - **Días del ciclo** = hoy − `ciclo.fecha_inicio`.
 
 ## 8. Formulario "Registrar acción"
@@ -137,7 +138,7 @@ Greenhouse ──< Lot ──< Cycle ──< ActionLog ──< ActionLogChange
 | `Phase` (fase) | id, order, name |
 | `Action` (acción de la plantilla) | id, phaseId (vacío = acción general), name, code (clave única y opcional para la vista 3D), order, detailType, active |
 | `Cycle` (ciclo) | id, lotId, number (correlativo por lote), startDate, endDate, status (ACTIVE/CLOSED), createdById, createdAt |
-| `ActionLog` (registro) | id, cycleId, actionId (vacío = "Otra acción"), name (copia), phaseId (copia), date, details (JSONB), notes, userId, createdAt, updatedAt |
+| `ActionLog` (registro) | id, cycleId, actionId (vacío = "Otra acción"), name (copia), phaseId (copia), date, details (JSONB), notes, userId, createdAt, updatedAt, voidedAt, voidedById, voidReason |
 | `ActionLogChange` (cambio de registro) | id, actionLogId, userId, changedAt, before (JSONB), after (JSONB) |
 | `User` (usuario local) | id, authId (`auth.users.id`, único), displayName, email, createdAt |
 
@@ -150,6 +151,18 @@ Greenhouse ──< Lot ──< Cycle ──< ActionLog ──< ActionLogChange
 - Las acciones se **desactivan**; nunca se borran.
 - Cada edición de un registro crea un `ActionLogChange` con los valores anteriores y nuevos, dentro de la misma transacción.
 - `details` se valida en la API según el `detailType` de la acción.
+
+### Anular un registro
+
+Un registro **no se borra**: se anula, para que quede constancia de que se hizo y se corrigió.
+
+- **Quién:** el ingeniero anula sus propios registros y el administrador cualquiera (§4). No hay límite de tiempo.
+- **Motivo obligatorio,** por ejemplo "Se registró en el lote equivocado". Se guardan `voidedAt`, `voidedById` y `voidReason`.
+- **No se deshace.** Si la acción sí se hizo, se registra de nuevo.
+- **Fase:** se recalcula sin contar los anulados (§7), así que puede retroceder.
+- **Stock:** si el registro tenía productos, se borran sus movimientos de consumo en la misma transacción y el stock vuelve a subir. Los productos del registro se conservan para el historial.
+- **Lo que deja de contar:** la fase, el "Último registro", las acciones generales de hoy, la animación de la vista 3D, el consumo y el costo por lote.
+- **Cómo se ve:** en la línea de tiempo y en el detalle aparece **tachado y en gris**, con la etiqueta "Anulado", quién lo anuló, cuándo y el motivo. Un registro anulado ya no se puede editar.
 - **`User` no guarda el rol.** El rol se obtiene siempre de `application_memberships` (§11.1). La fila local se crea automáticamente la primera vez que el usuario entra y sirve para la autoría y para mostrar su nombre.
 
 ## 10. Pantallas
@@ -160,7 +173,7 @@ Greenhouse ──< Lot ──< Cycle ──< ActionLog ──< ActionLogChange
 | Vista del lote | Celular y web | Ciclo activo, fase actual, acciones generales de hoy, línea de tiempo de registros, botones "Registrar acción" y "Nuevo ciclo" |
 | Registrar / editar acción | Celular | Formulario de §8 |
 | Historial de ciclos | Celular y web | Ciclos del lote: número, inicio, fin y duración |
-| Detalle del registro | Celular y web | Datos e historial de cambios |
+| Detalle del registro | Celular y web | Datos, historial de cambios y botón "Anular registro" con motivo (§9) |
 | Administración | Web (solo admin) | Fases y acciones de la plantilla, lotes |
 | Productos e inventario | Web (solo admin) | Catálogo, stock, historial, ingresos, ajustes y costos (§14) |
 
@@ -379,7 +392,7 @@ Las facturas de compra **no** se registran aquí: ya las lleva otra aplicación.
 
 - **Un solo libro de movimientos.** El stock no se guarda como número suelto: es la suma de los movimientos del producto (ingresos, consumos y ajustes). Así el historial siempre cuadra.
 - **Unidades:** cada producto se mide en volumen (LT y ml) o en peso (KG, GR y mg). La dosis se puede escribir en cualquier unidad de su mismo tipo y se convierte sola, por ejemplo 250 ml de un producto que se compra en LT descuenta 0,25 LT. El formulario solo ofrece las unidades del tipo del producto.
-- **Editar o borrar una aplicación** corrige su consumo en la misma transacción, para que el stock no se desfase.
+- **Editar o anular una aplicación** corrige su consumo en la misma transacción, para que el stock no se desfase. Al anularla, su consumo se devuelve al stock (§9, "Anular un registro").
 - **La app no bloquea** (§2): si el stock no alcanza, se registra igual, el stock queda en negativo y se marca como alerta para revisarlo.
 - **Ajustes de inventario:** el administrador puede corregir el stock tras un conteo físico. Queda como movimiento con su motivo.
 - **Los productos se desactivan,** nunca se borran, igual que las acciones.
