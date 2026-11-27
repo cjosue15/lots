@@ -147,6 +147,9 @@ export class RegisterLogComponent {
     const phase = this.data.value()?.template.phases.find((p) => p.id === id);
     return phase ? `${phase.order}. ${phase.name}` : 'Sin fase';
   };
+  /** Soil moisture, 0% to 100% in steps of 5. */
+  protected readonly humidityOptions = Array.from({ length: 21 }, (_, i) => `${i * 5}%`);
+  protected readonly humidityLabel = (value: string) => value;
   protected readonly yesNoLabel = (value: string) => (value === 'yes' ? 'Sí' : value === 'no' ? 'No' : '');
   protected readonly fertilizerLabel = (value: string) =>
     FERTILIZER_RESULTS[value as keyof typeof FERTILIZER_RESULTS] ?? '';

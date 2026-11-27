@@ -122,7 +122,16 @@
                       @case ('IRRIGATION') {
                         <hlm-field>
                           <label hlmFieldLabel for="log-humidity">Humedad</label>
-                          <input hlmInput id="log-humidity" formControlName="humidity" class="bg-card" />
+                          <hlm-select formControlName="humidity" [itemToString]="humidityLabel">
+                            <hlm-select-trigger buttonId="log-humidity" class="w-full bg-card">
+                              <hlm-select-value placeholder="Sin indicar" />
+                            </hlm-select-trigger>
+                            <hlm-select-content *hlmSelectPortal>
+                              @for (option of humidityOptions; track option) {
+                                <hlm-select-item [value]="option">{{ option }}</hlm-select-item>
+                              }
+                            </hlm-select-content>
+                          </hlm-select>
                         </hlm-field>
                       }
                       @case ('PEST_CHECK') {
