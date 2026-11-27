@@ -64,7 +64,6 @@ const PHASES: [name: string, actions: ActionSeed[]][] = [
     'Crecimiento',
     [
       ['iniciar-tutorado', 'Iniciar el tutorado', NONE],
-      ['limpiar-planta', 'Limpiar la planta', NONE],
     ],
   ],
   [
@@ -102,6 +101,8 @@ const GENERAL_ACTIONS: ActionSeed[] = [
   ['foliares', 'Foliares', APPLICATION],
   ['riego-humedad', 'Riego y registro de humedad', IRRIGATION],
   ['control-calidad', 'Control de calidad', NONE],
+  // Daily or every other day from Crecimiento on: it doesn't move the phase.
+  ['limpiar-planta', 'Limpiar la planta', NONE],
 ];
 
 /** Initial product categories (PLAN §14); the admin can add more. */
