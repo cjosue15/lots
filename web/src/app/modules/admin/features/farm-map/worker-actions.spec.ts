@@ -1,5 +1,6 @@
 import {
   FUNGICIDE_ON_SEEDLINGS,
+  bedStage,
   PRUNE_IN_PRODUCTION,
   WORKER_ACTIONS,
   lotWorkerAction,
@@ -31,7 +32,7 @@ describe('lotWorkerAction', () => {
     const watered = (date: string) => ({
       lastLog: log('riego-humedad', date),
       lastPhaseLog: phaseLog,
-      phase: phase(7),
+      phase: phase(8),
     });
     expect(lotWorkerAction(watered(today), today)).toBe(WORKER_ACTIONS['riego-humedad']);
     expect(lotWorkerAction(watered('2026-11-22'), today)).toBe(WORKER_ACTIONS['cosecha']);
@@ -39,14 +40,14 @@ describe('lotWorkerAction', () => {
 
   it('keeps the last action with a phase however long ago it was', () => {
     expect(
-      lotWorkerAction({ lastLog: phaseLog, lastPhaseLog: phaseLog, phase: phase(7) }, today),
+      lotWorkerAction({ lastLog: phaseLog, lastPhaseLog: phaseLog, phase: phase(8) }, today),
     ).toBe(WORKER_ACTIONS['cosecha']);
   });
 
   it("falls back to the last phase action when today's log has no animation", () => {
     expect(
       lotWorkerAction(
-        { lastLog: log(null, today), lastPhaseLog: phaseLog, phase: phase(7) },
+        { lastLog: log(null, today), lastPhaseLog: phaseLog, phase: phase(8) },
         today,
       ),
     ).toBe(WORKER_ACTIONS['cosecha']);
@@ -59,8 +60,8 @@ describe('lotWorkerAction', () => {
       lastPhaseLog: log('trasplantar', '2026-11-20'),
       phase: phase(order),
     });
-    expect(lotWorkerAction(fungicide(5), today)).toBe(FUNGICIDE_ON_SEEDLINGS);
-    expect(lotWorkerAction(fungicide(7), today)).toBe(WORKER_ACTIONS['fungicida-general']);
+    expect(lotWorkerAction(fungicide(6), today)).toBe(FUNGICIDE_ON_SEEDLINGS);
+    expect(lotWorkerAction(fungicide(8), today)).toBe(WORKER_ACTIONS['fungicida-general']);
   });
 
   it('cleans producing plants in Producción and growing ones otherwise', () => {
@@ -69,8 +70,18 @@ describe('lotWorkerAction', () => {
       lastPhaseLog: log('iniciar-tutorado', '2026-11-20'),
       phase: phase(order),
     });
-    expect(lotWorkerAction(cleaning(7), today)).toBe(PRUNE_IN_PRODUCTION);
+    expect(lotWorkerAction(cleaning(8), today)).toBe(PRUNE_IN_PRODUCTION);
     expect(PRUNE_IN_PRODUCTION).toMatchObject({ phase: 7, ridge: 'prune-leaves' });
-    expect(lotWorkerAction(cleaning(6), today)).toBe(WORKER_ACTIONS['limpiar-planta']);
+    expect(lotWorkerAction(cleaning(7), today)).toBe(WORKER_ACTIONS['limpiar-planta']);
+  });
+});
+
+describe('bedStage', () => {
+  it('draws the previous crop (phase 1) last, the others one stage back and Fin de cosecha as Producción', () => {
+    expect(bedStage(1)).toBe(8);
+    expect(bedStage(2)).toBe(1);
+    expect(bedStage(8)).toBe(7);
+    expect(bedStage(9)).toBe(7);
+    expect(bedStage(null)).toBeNull();
   });
 });

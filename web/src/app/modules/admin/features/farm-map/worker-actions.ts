@@ -150,6 +150,7 @@ const PRODUCT = {
   foliar: 0xd9c23a,
 } as const;
 
+/** Grouped by bed stage (see bedStage): removing the previous crop, phase 1 of a cycle, is stage 8. */
 export const WORKER_ACTIONS: Readonly<Record<string, WorkerAction>> = {
   // 1. Limpieza del campo
   // The ridges still have their plastic; the worker pulls it off one of them.
@@ -215,7 +216,10 @@ export const WORKER_ACTIONS: Readonly<Record<string, WorkerAction>> = {
   },
   'evaluar-fertilizantes': { motion: 'note', props: ['clipboard', 'pencil'] },
   cosecha: { motion: 'harvest', props: ['basket'], phase: 7, ridge: 'harvest-fruit' },
-  // 8. Cierre del ciclo
+  // Fin de cosecha: the plants still standing, nothing left to pick; the
+  // worker walks the aisle checking them.
+  'fin-cosecha': { motion: 'inspect', props: ['clipboard'], phase: 7, noFruit: true },
+  // 8. Retiro del cultivo anterior (phase 1 of the next cycle)
   'nematicida-cierre': {
     motion: 'valve',
     props: ['jug'],
@@ -240,7 +244,7 @@ export const WORKER_ACTIONS: Readonly<Record<string, WorkerAction>> = {
   'limpiar-planta': { motion: 'prune', props: ['scissors'], phase: 6, ridge: 'prune-leaves' },
 };
 
-/** Plantines: the phase where the general fungicide goes on the new seedlings. */
+/** Plantines (as a bed stage): where the general fungicide goes on the new seedlings. */
 const SEEDLINGS_PHASE = 5;
 
 /**
@@ -255,7 +259,7 @@ export const FUNGICIDE_ON_SEEDLINGS: WorkerAction = {
   ridge: 'drench-seedlings',
 };
 
-/** Producción: plants with fruit. */
+/** Producción (as a bed stage): plants with fruit. */
 const PRODUCTION_PHASE = 7;
 
 /**
@@ -266,6 +270,19 @@ export const PRUNE_IN_PRODUCTION: WorkerAction = {
   ...WORKER_ACTIONS['limpiar-planta'],
   phase: PRODUCTION_PHASE,
 };
+
+/**
+ * The stage of the field a bed is drawn as, from a cycle phase's order. The 3D
+ * view numbers stages in growing order (1 Limpieza del campo … 7 Producción,
+ * 8 dead plants: the `phase` of a WorkerAction and of BedOptions), while the
+ * template starts each cycle removing the previous crop and ends it with Fin
+ * de cosecha, its plants still standing (PLAN §6).
+ */
+export function bedStage(phaseOrder: number | null | undefined): number | null {
+  if (!phaseOrder) return null;
+  if (phaseOrder === 1) return 8;
+  return Math.min(phaseOrder - 1, 7);
+}
 
 export function workerActionFor(code: string | null | undefined): WorkerAction | null {
   return (code && WORKER_ACTIONS[code]) || null;
@@ -282,11 +299,12 @@ export function lotWorkerAction(
   today: string,
 ): WorkerAction | null {
   if (!cycle) return null;
+  const stage = bedStage(cycle.phase?.order);
   const todays = cycle.lastLog?.date === today ? workerActionFor(cycle.lastLog.code) : null;
-  if (todays === WORKER_ACTIONS['fungicida-general'] && cycle.phase?.order === SEEDLINGS_PHASE) {
+  if (todays === WORKER_ACTIONS['fungicida-general'] && stage === SEEDLINGS_PHASE) {
     return FUNGICIDE_ON_SEEDLINGS;
   }
-  if (todays === WORKER_ACTIONS['limpiar-planta'] && cycle.phase?.order === PRODUCTION_PHASE) {
+  if (todays === WORKER_ACTIONS['limpiar-planta'] && stage === PRODUCTION_PHASE) {
     return PRUNE_IN_PRODUCTION;
   }
   return todays ?? workerActionFor(cycle.lastPhaseLog?.code);

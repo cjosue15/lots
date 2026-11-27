@@ -4,7 +4,7 @@ import { CSS2DObject, CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer
 import { todayInPeru } from '../../../../../shared/peru-date';
 import { type Activity, daysWithoutLogs } from '../activity';
 import type { FarmLayout } from '../layout';
-import { lotWorkerAction } from '../worker-actions';
+import { bedStage, lotWorkerAction } from '../worker-actions';
 import { buildBed } from './beds';
 import { buildGreenhouse } from './greenhouse';
 import { COLORS, SceneAssets } from './materials';
@@ -167,7 +167,7 @@ export class FarmScene {
         // While someone works on it, the bed shows what that work needs.
         const phase = action?.ridge
           ? (action.phase ?? 1)
-          : (action?.phase ?? lot.cycle?.phase?.order ?? null);
+          : (action?.phase ?? bedStage(lot.cycle?.phase?.order));
         const { group } = buildBed(this.assets, {
           width,
           depth,

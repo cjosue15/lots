@@ -12,7 +12,7 @@ import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 import { firstValueFrom } from 'rxjs';
 import { formatDay } from '../../../../shared/peru-date';
 import { LogListComponent } from '../../components/log-list.component';
-import { PhaseBarComponent } from '../../components/phase-bar.component';
+import { PhaseBarComponent, TOTAL_PHASES } from '../../components/phase-bar.component';
 import { LotsService } from '../../services/lots.service';
 
 @Component({
@@ -49,6 +49,7 @@ export class LotDetailComponent {
   );
 
   protected readonly formatDay = formatDay;
+  protected readonly totalPhases = TOTAL_PHASES;
 
   protected async startCycle(): Promise<void> {
     const number = this.nextCycleNumber();

@@ -1,8 +1,9 @@
 import { Component, computed, input } from '@angular/core';
 
-const TOTAL_PHASES = 8;
+/** Phases in the template (PLAN §6); fixed, only renamed. */
+export const TOTAL_PHASES = 9;
 
-/** Eight segments, one per phase of the template, filled up to the current one. */
+/** One segment per phase of the template, filled up to the current one. */
 @Component({
   selector: 'app-phase-bar',
   host: {
@@ -20,7 +21,7 @@ const TOTAL_PHASES = 8;
   `,
 })
 export class PhaseBarComponent {
-  /** Current phase order (1–8), or null without phase logs. */
+  /** Current phase order (1–9), or null without phase logs. */
   readonly order = input<number | null>(null);
 
   protected readonly segments = Array.from({ length: TOTAL_PHASES }, (_, i) => i + 1);

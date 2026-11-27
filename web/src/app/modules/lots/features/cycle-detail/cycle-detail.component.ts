@@ -7,7 +7,7 @@ import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
 import { formatDay } from '../../../../shared/peru-date';
 import { LogListComponent } from '../../components/log-list.component';
-import { PhaseBarComponent } from '../../components/phase-bar.component';
+import { PhaseBarComponent, TOTAL_PHASES } from '../../components/phase-bar.component';
 import { AuthService } from '../../../auth/services/auth.service';
 import { CycleCostComponent } from '../../../admin/features/costs/cycle-cost.component';
 import { LotsService } from '../../services/lots.service';
@@ -61,7 +61,7 @@ import { LotsService } from '../../services/lots.service';
           <p class="mt-3 text-lg font-medium">
             @if (cycle.phase; as phase) {
               {{ cycle.endDate ? 'Llegó a' : '' }} {{ phase.name }}
-              <span class="text-sm font-normal text-muted-foreground">fase {{ phase.order }} de 8</span>
+              <span class="text-sm font-normal text-muted-foreground">fase {{ phase.order }} de {{ totalPhases }}</span>
             } @else {
               Sin registros de fase
             }
@@ -97,4 +97,5 @@ export class CycleDetailComponent {
   });
 
   protected readonly formatDay = formatDay;
+  protected readonly totalPhases = TOTAL_PHASES;
 }
