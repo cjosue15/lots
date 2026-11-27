@@ -116,22 +116,27 @@ model Cycle {
 /// What was done on a given day. name and phaseId are copied from the action
 /// so editing the template never alters history. actionId null = "Otra acción".
 model ActionLog {
-  id        String   @id @default(uuid())
-  cycleId   String
-  actionId  String?
-  name      String
-  phaseId   String?
-  date      DateTime @db.Date
-  details   Json?
-  notes     String?
-  userId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String    @id @default(uuid())
+  cycleId    String
+  actionId   String?
+  name       String
+  phaseId    String?
+  date       DateTime  @db.Date
+  details    Json?
+  notes      String?
+  userId     String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  /// Set when the log is voided (PLAN §9): it stays in the history, crossed out, and no longer counts.
+  voidedAt   DateTime?
+  voidedById String?
+  voidReason String?
 
   cycle    Cycle              @relation(fields: [cycleId], references: [id])
   action   Action?            @relation(fields: [actionId], references: [id])
   phase    Phase?             @relation(fields: [phaseId], references: [id])
-  user     User               @relation(fields: [userId], references: [id])
+  user     User               @relation("LogAuthor", fields: [userId], references: [id])
+  voidedBy User?              @relation("LogVoider", fields: [voidedById], references: [id])
   changes  ActionLogChange[]
   products ActionLogProduct[]
 
@@ -246,7 +251,8 @@ model User {
   createdAt   DateTime @default(now())
 
   cycles         Cycle[]
-  actionLogs     ActionLog[]
+  actionLogs     ActionLog[]       @relation("LogAuthor")
+  voidedLogs     ActionLog[]       @relation("LogVoider")
   changes        ActionLogChange[]
   stockMovements StockMovement[]
 }

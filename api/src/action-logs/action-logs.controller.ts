@@ -8,6 +8,8 @@ import {
   createActionLogSchema,
   type UpdateActionLog,
   updateActionLogSchema,
+  type VoidActionLog,
+  voidActionLogSchema,
 } from './action-logs.schemas.js';
 import { ActionLogsService } from './action-logs.service.js';
 
@@ -39,5 +41,15 @@ export class ActionLogsController {
     @CurrentUser() user: AuthUser,
   ): Promise<ActionLogResponse> {
     return this.logs.update(id, body, user);
+  }
+
+  /** Voids the log instead of deleting it (PLAN §9). */
+  @Post('logs/:id/void')
+  void(
+    @Param('id', { schema: uuidParam }) id: string,
+    @Body({ schema: voidActionLogSchema }) body: VoidActionLog,
+    @CurrentUser() user: AuthUser,
+  ): Promise<ActionLogResponse> {
+    return this.logs.void(id, body.reason, user);
   }
 }

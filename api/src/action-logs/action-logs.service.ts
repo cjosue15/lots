@@ -15,6 +15,7 @@ import {
   type ActionLogDetailResponse,
   actionLogSelect,
   type ActionLogResponse,
+  canChange,
   toActionLogResponse,
 } from './action-log.response.js';
 import { diffSnapshots, type LogSnapshot, type ProductSnapshot } from './log-changes.js';
@@ -118,8 +119,11 @@ export class ActionLogsService {
     if (!log) {
       throw new NotFoundException('El registro no existe');
     }
-    if (user.role !== 'admin' && log.userId !== user.id) {
+    if (!canChange(log.userId, user)) {
       throw new ForbiddenException('Solo puedes editar tus propios registros');
+    }
+    if (log.voidedAt) {
+      throw new ConflictException('El registro está anulado; ya no se puede editar');
     }
 
     const before: LogSnapshot = {
@@ -211,6 +215,45 @@ export class ActionLogsService {
       }),
     ]);
     return toActionLogResponse(row, user);
+  }
+
+  /**
+   * Voids a log (PLAN §9): it stays, crossed out, with who voided it and why.
+   * Its stock movements are removed in the same transaction, so the products
+   * go back to stock; the applied products stay for the history.
+   */
+  async void(id: string, reason: string, user: AuthUser): Promise<ActionLogResponse> {
+    const log = await this.prisma.actionLog.findUnique({
+      where: { id },
+      select: { userId: true, voidedAt: true },
+    });
+    if (!log) {
+      throw new NotFoundException('El registro no existe');
+    }
+    if (!canChange(log.userId, user)) {
+      throw new ForbiddenException('Solo puedes anular tus propios registros');
+    }
+    if (log.voidedAt) {
+      throw new ConflictException('El registro ya está anulado');
+    }
+
+    try {
+      const [, row] = await this.prisma.$transaction([
+        this.prisma.stockMovement.deleteMany({ where: { actionLogProduct: { actionLogId: id } } }),
+        this.prisma.actionLog.update({
+          // `voidedAt: null` keeps a second, simultaneous void from overwriting the first.
+          where: { id, voidedAt: null },
+          data: { voidedAt: new Date(), voidedById: user.id, voidReason: reason },
+          select: actionLogSelect,
+        }),
+      ]);
+      return toActionLogResponse(row, user);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        throw new ConflictException('El registro ya está anulado');
+      }
+      throw error;
+    }
   }
 
   async findOne(id: string, user: AuthUser): Promise<ActionLogDetailResponse> {

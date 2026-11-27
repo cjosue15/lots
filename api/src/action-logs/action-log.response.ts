@@ -21,6 +21,9 @@ export const actionLogSelect = {
   phase: { select: { id: true, order: true, name: true } },
   action: { select: { detailType: true } },
   user: { select: { id: true, displayName: true } },
+  voidedAt: true,
+  voidReason: true,
+  voidedBy: { select: { id: true, displayName: true } },
   _count: { select: { changes: true } },
 } satisfies Prisma.ActionLogSelect;
 
@@ -47,7 +50,9 @@ export interface ActionLogResponse {
   notes: string | null;
   user: { id: string; displayName: string };
   edited: boolean;
-  /** Authors edit their own logs; admins edit all. */
+  /** Voided logs stay in the history, crossed out, and no longer count (PLAN §9). */
+  voided: { at: Date; reason: string; user: { id: string; displayName: string } | null } | null;
+  /** Authors edit and void their own logs; admins all. Never once voided. */
   canEdit: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -67,10 +72,18 @@ export function toActionLogResponse(row: ActionLogRow, viewer: AuthUser): Action
     notes: row.notes,
     user: row.user,
     edited: row._count.changes > 0,
-    canEdit: viewer.role === 'admin' || row.user.id === viewer.id,
+    voided: row.voidedAt
+      ? { at: row.voidedAt, reason: row.voidReason ?? '', user: row.voidedBy }
+      : null,
+    canEdit: !row.voidedAt && canChange(row.user.id, viewer),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
+}
+
+/** Authors edit and void their own logs; admins edit and void all. */
+export function canChange(authorId: string, viewer: AuthUser): boolean {
+  return viewer.role === 'admin' || authorId === viewer.id;
 }
 
 /** Extra data for the log detail screen: where it belongs and its edit history. */

@@ -79,6 +79,8 @@ const activeCycleInclude = {
   take: 1,
   include: {
     actionLogs: {
+      // Voided logs no longer count for the phase, "Último" or today's actions (PLAN §9).
+      where: { voidedAt: null },
       orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
       select: {
         name: true,
@@ -164,7 +166,7 @@ export class LotsService {
     return {
       ...this.toHistoryItem(cycle, todayInPeru()),
       lot: cycle.lot,
-      phase: currentPhase(cycle.actionLogs),
+      phase: currentPhase(cycle.actionLogs.filter((log) => !log.voidedAt)),
       logs: cycle.actionLogs.map((row) => toActionLogResponse(row, viewer)),
     };
   }

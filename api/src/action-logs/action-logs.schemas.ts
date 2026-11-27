@@ -79,3 +79,9 @@ export const updateActionLogSchema = z.object({
   notes: optionalText(1000).nullable(),
 });
 export type UpdateActionLog = z.infer<typeof updateActionLogSchema>;
+
+/** Voiding needs a reason so the history explains the correction. */
+export const voidActionLogSchema = z.object({
+  reason: z.string().trim().min(1, 'Escribe el motivo').max(500),
+});
+export type VoidActionLog = z.infer<typeof voidActionLogSchema>;
