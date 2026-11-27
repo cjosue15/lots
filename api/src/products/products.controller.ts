@@ -55,8 +55,12 @@ export class ProductsController {
   }
 }
 
-/** Catalog, stock entries and adjustments: admin only (PLAN §14). */
-@Roles('admin')
+/**
+ * Catalog, stock entries and adjustments: admin and engineers (PLAN §14).
+ * Engineers enter the price of each entry (from the invoice) but never see
+ * prices or averages afterwards; costs stay admin only.
+ */
+@Roles('admin', 'employee')
 @Controller('admin')
 export class AdminProductsController {
   constructor(
@@ -65,6 +69,7 @@ export class AdminProductsController {
   ) {}
 
   /** What applications cost per cycle and per product (PLAN §14, "Costo"). */
+  @Roles('admin')
   @Get('costs')
   costReport(
     @Query({ schema: costQuerySchema }) query: CostQuery,
@@ -72,6 +77,7 @@ export class AdminProductsController {
     return this.costs.report(query.from, query.to);
   }
 
+  @Roles('admin')
   @Get('cycles/:id/costs')
   cycleCosts(
     @Param('id', { schema: uuidParam }) id: string,
@@ -80,62 +86,88 @@ export class AdminProductsController {
   }
 
   @Get('products')
-  list(): Promise<AdminProducts> {
-    return this.products.adminList();
+  async list(@CurrentUser() user: AuthUser): Promise<AdminProducts> {
+    return forRole(await this.products.adminList(), user);
   }
 
   @Post('products')
-  create(
+  async create(
     @Body({ schema: createProductSchema }) body: CreateProduct,
+    @CurrentUser() user: AuthUser,
   ): Promise<ProductDetail> {
-    return this.products.create(body);
+    return detailForRole(await this.products.create(body), user);
   }
 
   @Get('products/:id')
-  detail(
+  async detail(
     @Param('id', { schema: uuidParam }) id: string,
+    @CurrentUser() user: AuthUser,
   ): Promise<ProductDetail> {
-    return this.products.detail(id);
+    return detailForRole(await this.products.detail(id), user);
   }
 
   @Patch('products/:id')
-  update(
+  async update(
     @Param('id', { schema: uuidParam }) id: string,
     @Body({ schema: updateProductSchema }) body: UpdateProduct,
+    @CurrentUser() user: AuthUser,
   ): Promise<ProductDetail> {
-    return this.products.update(id, body);
+    return detailForRole(await this.products.update(id, body), user);
   }
 
   @Post('products/:id/entries')
-  addEntry(
+  async addEntry(
     @Param('id', { schema: uuidParam }) id: string,
     @Body({ schema: stockEntrySchema }) body: StockEntry,
     @CurrentUser() user: AuthUser,
   ): Promise<ProductDetail> {
-    return this.products.addEntry(id, body, user.id);
+    return detailForRole(await this.products.addEntry(id, body, user.id), user);
   }
 
   @Post('products/:id/adjustments')
-  adjust(
+  async adjust(
     @Param('id', { schema: uuidParam }) id: string,
     @Body({ schema: stockAdjustmentSchema }) body: StockAdjustment,
     @CurrentUser() user: AuthUser,
   ): Promise<ProductDetail> {
-    return this.products.adjust(id, body, user.id);
+    return detailForRole(await this.products.adjust(id, body, user.id), user);
   }
 
   @Post('product-categories')
-  createCategory(
+  async createCategory(
     @Body({ schema: createCategorySchema }) body: CreateCategory,
+    @CurrentUser() user: AuthUser,
   ): Promise<AdminProducts> {
-    return this.products.createCategory(body);
+    return forRole(await this.products.createCategory(body), user);
   }
 
   @Patch('product-categories/:id')
-  updateCategory(
+  async updateCategory(
     @Param('id', { schema: uuidParam }) id: string,
     @Body({ schema: updateCategorySchema }) body: UpdateCategory,
+    @CurrentUser() user: AuthUser,
   ): Promise<AdminProducts> {
-    return this.products.updateCategory(id, body);
+    return forRole(await this.products.updateCategory(id, body), user);
   }
+}
+
+/** Engineers never see prices (PLAN §14): the admin gets everything. */
+export function forRole(list: AdminProducts, user: AuthUser): AdminProducts {
+  if (user.role === 'admin') return list;
+  return {
+    ...list,
+    products: list.products.map((p) => ({ ...p, averageCost: null })),
+  };
+}
+
+export function detailForRole(
+  detail: ProductDetail,
+  user: AuthUser,
+): ProductDetail {
+  if (user.role === 'admin') return detail;
+  return {
+    ...detail,
+    averageCost: null,
+    movements: detail.movements.map((m) => ({ ...m, unitCost: null })),
+  };
 }

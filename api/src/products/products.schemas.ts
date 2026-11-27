@@ -71,6 +71,7 @@ export const stockEntrySchema = z.object({
     .number('Escribe la cantidad')
     .positive('La cantidad debe ser mayor que 0')
     .max(1_000_000),
+  /** From the invoice; engineers enter it too, so every entry has a price. */
   unitCost,
   date: daySchema,
 });
