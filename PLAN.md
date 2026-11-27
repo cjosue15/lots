@@ -51,7 +51,7 @@ Que los ingenieros registren desde el celular **lo que se hizo hoy en cada lote*
 
 - Un **ciclo** = lote + número correlativo dentro del lote + fecha de inicio + fecha de fin + estado (activo o cerrado). Por ejemplo: "Bungalows · Lote 5 · Ciclo 3".
 - Cada lote tiene **un solo ciclo activo** a la vez y guarda todos los anteriores.
-- Para empezar un cultivo nuevo, el ingeniero pulsa **"Nuevo ciclo"**. El ciclo activo anterior se cierra automáticamente con la fecha de ese día.
+- Para empezar un cultivo nuevo, el ingeniero pulsa **"Nuevo ciclo"** y elige la fecha de inicio (hoy por defecto, §13). El ciclo activo anterior se cierra automáticamente con esa fecha.
 - **Cultivos y variedades: quedan para la etapa 2.** Por ahora el ciclo no guarda qué se sembró. Un lote puede tener al mismo tiempo una parte de una variedad y otra parte de otra, y eso requiere un diseño propio (por ejemplo, varias variedades por ciclo con la proporción o las líneas de cada una).
 - **Arranque desde cero:** cada lote empieza en el ciclo 1, con su primer registro con fecha de hoy. No se carga historial previo ni se importa nada de `distribution`.
 
@@ -353,9 +353,7 @@ Resultado: **una consulta a Supabase por usuario y por token**, es decir, aproxi
 - ~~Tipo de detalle de cada acción~~: confirmado (§8), con todos los campos opcionales.
 - ~~Por confirmar: ¿cómo se aplica el fungicida y enraizante?~~ (fase 6): con mochila, dirigido a la base de cada plantín. La vista 3D ya lo muestra así.
 - ~~Por decidir: ¿juntar "Recibir los plantines" y "Trasplantar"?~~ (fase 6, §6): se quedan como dos acciones separadas.
-- **Por analizar: fecha de inicio de un ciclo con fecha pasada.** Al registrar una acción, la fecha va del inicio del ciclo a hoy, así que una acción olvidada se puede registrar después con su fecha real. Pero el botón "Iniciar ciclo" siempre usa la fecha de hoy. Si el ciclo se inicia tarde, por un olvido o al salir a producción con lotes que ya llevan semanas, no se puede registrar nada anterior a ese día.
-  - Posible solución: un campo "Fecha de inicio" en el diálogo de "Iniciar ciclo", con hoy por defecto, sin fechas futuras y sin fechas anteriores al inicio del ciclo anterior.
-  - La API ya acepta `startDate` al crear el ciclo y valida ese límite. Solo falta el campo en la web.
+- ~~Fecha de inicio de un ciclo con fecha pasada~~: resuelta. "Iniciar ciclo" y "Nuevo ciclo" piden la **fecha de inicio**, con hoy por defecto, para poder registrar lo que se hizo desde que empezó el cultivo (por ejemplo, al salir a producción con lotes que ya llevan semanas). No puede ser posterior a hoy, ni anterior al inicio del ciclo activo ni a su último registro sin anular: el ciclo activo se cierra ese día, así que ninguno de sus registros puede quedar después. La API valida lo mismo.
 
 ## 14. Productos e inventario (etapa 2)
 
