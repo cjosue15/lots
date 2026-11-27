@@ -28,6 +28,7 @@ import {
   stockAlert,
   usesProduct,
 } from '../../models/product-admin.model';
+import { AuthService } from '../../../auth/services/auth.service';
 import { AdminService } from '../../services/admin.service';
 import { ProductFormComponent } from './product-form.component';
 import { showSaveError } from './show-save-error';
@@ -53,6 +54,8 @@ import { showSaveError } from './show-save-error';
 })
 export class ProductsAdminComponent {
   private readonly admin = inject(AdminService);
+  /** Engineers see stock, never prices (PLAN §14). */
+  protected readonly isAdmin = inject(AuthService).isAdmin;
   private readonly router = inject(Router);
 
   protected readonly data = rxResource({ stream: () => this.admin.getProducts() });

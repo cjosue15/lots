@@ -13,7 +13,10 @@
   <div class="flex flex-wrap items-start justify-between gap-4">
     <p class="max-w-prose text-sm text-muted-foreground">
       Cada invernadero tiene su propio stock: sube con cada ingreso y baja con cada aplicación
-      registrada en sus lotes. Los ingenieros ven el stock pero no los precios.
+      registrada en sus lotes.
+      @if (isAdmin()) {
+        Los ingenieros ven el stock pero no los precios.
+      }
     </p>
     <hlm-dialog>
       <button hlmBtn hlmDialogTrigger type="button">
@@ -168,7 +171,9 @@
               <span class="sr-only">Stock en</span> {{ g.name }}
             </th>
           }
-          <th hlmTh scope="col" class="text-end">Costo promedio</th>
+          @if (isAdmin()) {
+            <th hlmTh scope="col" class="text-end">Costo promedio</th>
+          }
           <th hlmTh scope="col" class="w-10"><span class="sr-only">Abrir</span></th>
         </tr>
       </thead>
@@ -214,14 +219,16 @@
                 }
               </td>
             }
-            <td hlmTd class="text-end tabular-nums">
-              @if (product.averageCost !== null) {
-                {{ money(product.averageCost)
-                }}<span class="text-muted-foreground"> / {{ symbol(product) }}</span>
-              } @else {
-                —
-              }
-            </td>
+            @if (isAdmin()) {
+              <td hlmTd class="text-end tabular-nums">
+                @if (product.averageCost !== null) {
+                  {{ money(product.averageCost)
+                  }}<span class="text-muted-foreground"> / {{ symbol(product) }}</span>
+                } @else {
+                  —
+                }
+              </td>
+            }
             <td hlmTd class="text-end text-muted-foreground">
               <ng-icon
                 name="lucideChevronRight"
@@ -235,7 +242,7 @@
           <tr hlmTr>
             <td
               hlmTd
-              [attr.colspan]="4 + shownGreenhouses().length"
+              [attr.colspan]="(isAdmin() ? 4 : 3) + shownGreenhouses().length"
               class="py-10 text-center text-muted-foreground"
             >
               @if (data.value()?.products?.length) {

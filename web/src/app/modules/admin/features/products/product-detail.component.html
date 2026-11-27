@@ -119,29 +119,32 @@
   </div>
 
   <dl
-    class="mt-6 grid grid-cols-1 divide-y rounded-lg border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0"
+    class="mt-6 grid grid-cols-1 divide-y rounded-lg border bg-card sm:divide-x sm:divide-y-0"
+    [class]="isAdmin() ? 'sm:grid-cols-3' : ''"
   >
     <div class="px-4 py-3">
       <dt class="text-sm text-muted-foreground">Stock total</dt>
       <dd class="mt-1 text-2xl font-semibold tabular-nums">{{ amount(p, totals().stock) }}</dd>
     </div>
-    <div class="px-4 py-3">
-      <dt class="text-sm text-muted-foreground">Costo promedio</dt>
-      <dd class="mt-1 text-2xl font-semibold tabular-nums">
-        @if (p.averageCost !== null) {
-          {{ money(p.averageCost)
-          }}<span class="text-base font-normal text-muted-foreground"> / {{ symbol(p) }}</span>
-        } @else {
-          —
-        }
-      </dd>
-    </div>
-    <div class="px-4 py-3">
-      <dt class="text-sm text-muted-foreground">Valor en invernaderos</dt>
-      <dd class="mt-1 text-2xl font-semibold tabular-nums">
-        {{ totals().value !== null ? money(totals().value!) : '—' }}
-      </dd>
-    </div>
+    @if (isAdmin()) {
+      <div class="px-4 py-3">
+        <dt class="text-sm text-muted-foreground">Costo promedio</dt>
+        <dd class="mt-1 text-2xl font-semibold tabular-nums">
+          @if (p.averageCost !== null) {
+            {{ money(p.averageCost)
+            }}<span class="text-base font-normal text-muted-foreground"> / {{ symbol(p) }}</span>
+          } @else {
+            —
+          }
+        </dd>
+      </div>
+      <div class="px-4 py-3">
+        <dt class="text-sm text-muted-foreground">Valor en invernaderos</dt>
+        <dd class="mt-1 text-2xl font-semibold tabular-nums">
+          {{ totals().value !== null ? money(totals().value!) : '—' }}
+        </dd>
+      </div>
+    }
   </dl>
 
   <section class="mt-8" aria-labelledby="stock-title">
@@ -254,7 +257,9 @@
             <th hlmTh scope="col">Detalle</th>
             <th hlmTh scope="col">Responsable</th>
             <th hlmTh scope="col" class="text-end">Cantidad</th>
-            <th hlmTh scope="col" class="text-end">Precio por {{ symbol(p) }}</th>
+            @if (isAdmin()) {
+              <th hlmTh scope="col" class="text-end">Precio por {{ symbol(p) }}</th>
+            }
             <th hlmTh scope="col" class="text-end">Saldo</th>
           </tr>
         </thead>
@@ -287,9 +292,11 @@
               >
                 {{ signed(p, m) }}
               </td>
-              <td hlmTd class="text-end whitespace-nowrap tabular-nums">
-                {{ m.unitCost !== null ? money(m.unitCost) : '' }}
-              </td>
+              @if (isAdmin()) {
+                <td hlmTd class="text-end whitespace-nowrap tabular-nums">
+                  {{ m.unitCost !== null ? money(m.unitCost) : '' }}
+                </td>
+              }
               <td
                 hlmTd
                 class="text-end font-medium whitespace-nowrap tabular-nums"
@@ -300,7 +307,11 @@
             </tr>
           } @empty {
             <tr hlmTr>
-              <td hlmTd colspan="8" class="py-10 text-center text-muted-foreground">
+              <td
+                hlmTd
+                [attr.colspan]="isAdmin() ? 8 : 7"
+                class="py-10 text-center text-muted-foreground"
+              >
                 @if (p.movements.length) {
                   No hay movimientos en este invernadero.
                 } @else {

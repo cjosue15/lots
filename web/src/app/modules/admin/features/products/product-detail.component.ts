@@ -22,6 +22,7 @@ import {
   stockAlert,
   usesProduct,
 } from '../../models/product-admin.model';
+import { AuthService } from '../../../auth/services/auth.service';
 import { AdminService } from '../../services/admin.service';
 import { ProductFormComponent } from './product-form.component';
 import { showSaveError } from './show-save-error';
@@ -48,6 +49,8 @@ import { StockAdjustFormComponent, StockEntryFormComponent } from './stock-forms
 })
 export class ProductDetailComponent {
   private readonly admin = inject(AdminService);
+  /** Engineers see stock, never prices (PLAN §14). */
+  protected readonly isAdmin = inject(AuthService).isAdmin;
 
   /** Route param. */
   readonly id = input.required<string>();

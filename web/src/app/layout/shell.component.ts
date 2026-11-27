@@ -1,14 +1,14 @@
 import { Component, computed, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideLeaf, lucideLogOut, lucideSettings } from '@ng-icons/lucide';
+import { lucideLeaf, lucideLogOut, lucidePackage, lucideSettings } from '@ng-icons/lucide';
 import { ROLE_LABELS } from '../modules/auth/models/me.model';
 import { AuthService } from '../modules/auth/services/auth.service';
 
 @Component({
   selector: 'app-shell',
   imports: [RouterOutlet, RouterLink, RouterLinkActive, NgIcon],
-  providers: [provideIcons({ lucideLeaf, lucideLogOut, lucideSettings })],
+  providers: [provideIcons({ lucideLeaf, lucideLogOut, lucidePackage, lucideSettings })],
   template: `
     <header class="bg-primary text-primary-foreground">
       <div class="mx-auto flex h-14 max-w-5xl items-center gap-3 px-4">
@@ -30,6 +30,17 @@ import { AuthService } from '../modules/auth/services/auth.service';
           >
             <ng-icon name="lucideSettings" size="16" aria-hidden="true" />
             <span class="hidden sm:inline">Administración</span>
+          </a>
+        } @else if (auth.me()) {
+          <a
+            routerLink="/admin/products"
+            routerLinkActive="bg-white/15"
+            ariaCurrentWhenActive="page"
+            class="flex h-10 items-center gap-1.5 rounded-md px-3 text-sm hover:bg-white/10 focus-visible:ring-3 focus-visible:ring-white/60 focus-visible:outline-none"
+            aria-label="Inventario"
+          >
+            <ng-icon name="lucidePackage" size="16" aria-hidden="true" />
+            <span class="hidden sm:inline">Inventario</span>
           </a>
         }
 

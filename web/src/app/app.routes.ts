@@ -1,6 +1,5 @@
 import { Routes } from '@angular/router';
 import { provideBrnCalendarI18n } from '@spartan-ng/brain/calendar';
-import { adminGuard } from './shared/guards/admin.guard';
 import { authGuard } from './shared/guards/auth.guard';
 import { publicGuard } from './shared/guards/public.guard';
 import { calendarI18nEs } from './shared/ui/calendar-i18n';
@@ -27,8 +26,8 @@ export const routes: Routes = [
     providers: [provideBrnCalendarI18n(calendarI18nEs)],
     children: [
       {
+        // Admin area. Engineers only get Productos (PLAN §14); each section guards itself.
         path: 'admin',
-        canMatch: [adminGuard],
         loadChildren: () => import('./modules/admin/admin.routes').then((m) => m.adminRoutes),
       },
       {
