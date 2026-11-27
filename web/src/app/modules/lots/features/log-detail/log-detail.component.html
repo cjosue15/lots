@@ -26,10 +26,24 @@
         <p hlmCardDescription>
           {{ log.lot.greenhouse.name }}, lote {{ log.lot.number }}, ciclo {{ log.cycle.number }}
         </p>
-        <h1 hlmCardTitle class="text-xl">{{ log.name }}</h1>
+        <h1 hlmCardTitle class="text-xl" [class.line-through]="log.voided" [class.text-muted-foreground]="log.voided">{{ log.name }}</h1>
       </div>
 
-      <div hlmCardContent>
+      @if (log.voided; as voided) {
+        <div class="mx-6 rounded-lg border border-dashed bg-muted/50 px-4 py-3 text-sm">
+          <p class="flex items-center gap-2 font-medium">
+            <ng-icon name="lucideBan" size="16" aria-hidden="true" />
+            Registro anulado
+          </p>
+          <p class="mt-1">Motivo: {{ voided.reason }}</p>
+          <p class="mt-1 text-muted-foreground">
+            {{ voided.user?.displayName ?? 'Usuario eliminado' }}, {{ formatDateTime(voided.at) }}
+          </p>
+          <p class="mt-1 text-muted-foreground">No cuenta para la fase ni para el stock.</p>
+        </div>
+      }
+
+      <div hlmCardContent [class.opacity-60]="log.voided">
         <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 text-sm">
           <dt class="text-muted-foreground">Fecha</dt>
           <dd class="tabular-nums">{{ formatDay(log.date) }}</dd>
@@ -62,11 +76,56 @@
       </div>
 
       @if (log.canEdit) {
-        <div hlmCardFooter class="mt-6 border-t pt-6">
+        <div hlmCardFooter class="mt-6 flex flex-col gap-2 border-t pt-6 sm:flex-row">
           <a hlmBtn variant="outline" [routerLink]="['/logs', log.id, 'edit']" class="h-11 w-full text-base sm:w-auto">
             <ng-icon name="lucidePencil" size="16" aria-hidden="true" />
             Editar registro
           </a>
+
+          <hlm-alert-dialog>
+            <button hlmAlertDialogTrigger hlmBtn variant="ghost" class="h-11 w-full text-base text-destructive sm:w-auto">
+              <ng-icon name="lucideBan" size="16" aria-hidden="true" />
+              Anular registro
+            </button>
+            <hlm-alert-dialog-content *hlmAlertDialogPortal="let ctx">
+              <hlm-alert-dialog-header>
+                <h2 hlmAlertDialogTitle>¿Anular "{{ log.name }}"?</h2>
+                <p hlmAlertDialogDescription>
+                  Quedará en el historial, tachado, y dejará de contar para la fase del lote.
+                  @if (log.products.length) {
+                    Sus productos vuelven al stock.
+                  }
+                  No se puede deshacer.
+                </p>
+              </hlm-alert-dialog-header>
+              <div class="grid gap-2">
+                <label for="void-reason" class="text-sm font-medium">Motivo</label>
+                <textarea
+                  hlmTextarea
+                  id="void-reason"
+                  rows="3"
+                  maxlength="500"
+                  placeholder="Por ejemplo: se registró en el lote equivocado"
+                  [value]="voidReason()"
+                  (input)="setVoidReason($event)"
+                ></textarea>
+              </div>
+              <hlm-alert-dialog-footer>
+                <button hlmAlertDialogCancel [disabled]="voiding()">Cancelar</button>
+                <button
+                  hlmBtn
+                  variant="destructive"
+                  [disabled]="!voidReason().trim() || voiding()"
+                  (click)="voidLog(ctx.close)"
+                >
+                  @if (voiding()) {
+                    <hlm-spinner aria-label="Anulando" />
+                  }
+                  Anular registro
+                </button>
+              </hlm-alert-dialog-footer>
+            </hlm-alert-dialog-content>
+          </hlm-alert-dialog>
         </div>
       }
     </section>

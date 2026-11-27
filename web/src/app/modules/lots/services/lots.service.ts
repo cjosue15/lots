@@ -66,6 +66,11 @@ export class LotsService {
     return this.http.patch<ActionLog>(`${this.api}/logs/${id}`, body);
   }
 
+  /** Voids the log (PLAN §9): it stays crossed out and its products go back to stock. */
+  voidLog(id: string, reason: string): Observable<ActionLog> {
+    return this.http.post<ActionLog>(`${this.api}/logs/${id}/void`, { reason });
+  }
+
   getCycle(id: string): Observable<CycleDetail> {
     return this.http.get<CycleDetail>(`${this.api}/cycles/${id}`);
   }

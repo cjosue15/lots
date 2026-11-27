@@ -59,6 +59,9 @@ export interface ActionLog {
   notes: string | null;
   user: { id: string; displayName: string };
   edited: boolean;
+  /** Voided logs stay in the history, crossed out, and no longer count (PLAN §9). */
+  voided: { at: string; reason: string; user: { id: string; displayName: string } | null } | null;
+  /** Edit and void; false once voided. */
   canEdit: boolean;
   createdAt: string;
   updatedAt: string;

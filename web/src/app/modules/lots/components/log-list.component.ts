@@ -29,16 +29,24 @@ interface DayGroup {
             >
               <span class="min-w-0 flex-1">
                 <span class="flex items-baseline justify-between gap-3">
-                  <span class="font-medium">{{ log.name }}</span>
+                  <span class="font-medium" [class.line-through]="log.voided" [class.text-muted-foreground]="log.voided">{{ log.name }}</span>
                   <span class="shrink-0 text-xs text-muted-foreground">
+                    @if (log.voided) {
+                      <span class="mr-1.5 rounded border px-1.5 py-0.5 font-medium">Anulado</span>
+                    }
                     {{ log.phase ? 'Fase ' + log.phase.order : 'General' }}
                   </span>
                 </span>
-                @for (line of describeLogDetails(log); track line) {
-                  <span class="block text-sm">{{ line }}</span>
-                }
-                @if (log.notes) {
-                  <span class="mt-1 line-clamp-2 block text-sm whitespace-pre-line text-muted-foreground">{{ log.notes }}</span>
+                <span class="block" [class.line-through]="log.voided" [class.text-muted-foreground]="log.voided">
+                  @for (line of describeLogDetails(log); track line) {
+                    <span class="block text-sm">{{ line }}</span>
+                  }
+                  @if (log.notes) {
+                    <span class="mt-1 line-clamp-2 block text-sm whitespace-pre-line text-muted-foreground">{{ log.notes }}</span>
+                  }
+                </span>
+                @if (log.voided) {
+                  <span class="mt-1 block text-sm text-muted-foreground">Motivo: {{ log.voided.reason }}</span>
                 }
                 <span class="mt-1.5 block text-xs text-muted-foreground">
                   {{ log.user.displayName }}@if (log.edited) {, editado}
