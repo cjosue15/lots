@@ -175,7 +175,7 @@ Un registro **no se borra**: se anula, para que quede constancia de que se hizo 
 | Historial de ciclos | Celular y web | Ciclos del lote: número, inicio, fin y duración |
 | Detalle del registro | Celular y web | Datos, historial de cambios y botón "Anular registro" con motivo (§9) |
 | Administración | Web (solo admin) | Fases y acciones de la plantilla, lotes |
-| Productos e inventario | Web (solo admin) | Catálogo, stock, historial, ingresos, ajustes y costos (§14) |
+| Productos e inventario | Web (admin e ingenieros; precios y costos solo admin) | Catálogo, stock, historial, ingresos, ajustes y costos (§14) |
 
 - **Acciones generales de hoy:** las acciones sin fase (generales y "Otra acción" sin fase) no cambian la fase (§7). Si hay alguna registrada hoy, la vista general, la vista del lote y el recuadro de la vista 3D la muestran bajo la fase ("Hoy: Riego y control de humedad"). Las tres muestran las 3 más recientes, en lista, y "+N más" si hay más. Al día siguiente deja de mostrarse. El "Último" de la vista general y del recuadro 3D es la última acción con fase, así que no repite la acción general.
 
@@ -378,13 +378,13 @@ Las facturas de compra **no** se registran aquí: ya las lleva otra aplicación.
 - **Stock mínimo por invernadero:** cada producto tiene un mínimo distinto en cada invernadero, y la alerta es por producto e invernadero.
 - **El precio es global:** el costo promedio de un producto se calcula con los ingresos de todos los invernaderos juntos.
 - **Sin traspasos entre invernaderos por ahora.** Se deja como mejora para después (ver "Mejoras para después").
-- **Solo el administrador** crea productos, registra los ingresos de stock y hace los ajustes de inventario. Los ingenieros solo eligen productos del catálogo al registrar una aplicación y ven el stock que queda, nunca los precios.
+- **El administrador y los ingenieros** crean y editan productos y categorías, registran los ingresos de stock y hacen los ajustes de inventario. Los ingenieros entran por "Inventario" en la barra superior (`/admin/products`), solo ven esa sección de la administración y escriben el precio de cada ingreso (lo copian de la factura que reciben con el producto), pero **no ven precios después**: la API les devuelve el costo promedio y el precio de cada movimiento vacíos, y la pestaña "Costos" sigue solo para el admin.
 - **Categorías iniciales:** Químico y Fertilizante. El administrador puede agregar más después.
 - **La cantidad de la aplicación es el total usado en ese lote** (no la concentración por cilindro), y es lo que se descuenta del stock. En el formulario el campo pasa a llamarse "Cantidad usada".
-- **Solo productos del catálogo.** Si un producto no está, el ingeniero le pide al administrador que lo cree y luego registra la aplicación.
+- **Solo productos del catálogo.** Si un producto no está, el ingeniero lo crea en "Inventario" y luego registra la aplicación.
 - **Costo por lote y por ciclo:** sí se quiere. No se guarda en ninguna tabla: se calcula a partir de lo usado y del precio de cada ingreso (§14, "Costo"). **Solo lo ve el administrador.**
 - **No se registran compras ni facturas:** las lleva otra aplicación.
-- **El precio por unidad es obligatorio en cada ingreso de stock,** también en el inventario inicial, para que el costo por lote siempre salga completo.
+- **El precio por unidad es obligatorio en cada ingreso de stock,** lo registre el admin o un ingeniero, también en el inventario inicial, para que el costo por lote siempre salga completo.
 - **Unidades:** la cantidad usada se puede escribir en L o ml para los productos que se miden en volumen, y en kg, g o mg para los que se miden en peso. Se convierte a la medida del producto antes de descontar, por ejemplo 100 g de un producto en KG descuenta 0,1 KG.
 - **Puesta en marcha:** el inventario inicial se carga **una sola vez con un seed de producción** a partir de una tabla (ver "Puesta en marcha"). La app no tiene pantalla para el conteo inicial: un producto creado desde la administración empieza en 0 y su stock entra con los ingresos.
 
