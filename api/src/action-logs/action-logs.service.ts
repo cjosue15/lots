@@ -222,7 +222,7 @@ export class ActionLogsService {
       throw new NotFoundException('El registro no existe');
     }
 
-    // Only 8 phases: one small query turns stored phase ids into labels.
+    // Only 9 phases: one small query turns stored phase ids into labels.
     const phases = row.changes.length
       ? await this.prisma.phase.findMany({ select: { id: true, order: true, name: true } })
       : [];

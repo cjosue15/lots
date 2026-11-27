@@ -18,7 +18,25 @@ const GREENHOUSES: [name: string, lots: number][] = [
   ['Carmen Alto', 9],
 ];
 
+/**
+ * In order. A cycle starts by removing the previous crop, so that phase comes
+ * first, and ends with Fin de cosecha.
+ */
 const PHASES: [name: string, actions: ActionSeed[]][] = [
+  [
+    'Retiro del cultivo anterior',
+    [
+      ['nematicida-cierre', 'Aplicar nematicida por riego', APPLICATION],
+      ['arrancar-planta', 'Arrancar la planta de raíz', NONE],
+      ['cortar-raiz', 'Cortar la raíz y botarla', NONE],
+      ['secar-planta', 'Dejar secar la planta', NONE],
+      [
+        'bajar-planta',
+        'Retirar los pepinillos amarillos (fruto) y bajar la planta fuera del lote',
+        NONE,
+      ],
+    ],
+  ],
   [
     'Limpieza del campo',
     [
@@ -78,20 +96,7 @@ const PHASES: [name: string, actions: ActionSeed[]][] = [
       ['cosecha', 'Iniciar la cosecha', NONE],
     ],
   ],
-  [
-    'Cierre del ciclo',
-    [
-      ['nematicida-cierre', 'Aplicar nematicida por riego', APPLICATION],
-      ['arrancar-planta', 'Arrancar la planta de raíz', NONE],
-      ['cortar-raiz', 'Cortar la raíz y botarla', NONE],
-      ['secar-planta', 'Dejar secar la planta', NONE],
-      [
-        'bajar-planta',
-        'Retirar los pepinillos amarillos (fruto) y bajar la planta fuera del lote',
-        NONE,
-      ],
-    ],
-  ],
+  ['Fin de cosecha', [['fin-cosecha', 'Terminar la cosecha', NONE]]],
 ];
 
 const GENERAL_ACTIONS: ActionSeed[] = [
