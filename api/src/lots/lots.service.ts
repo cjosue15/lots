@@ -210,6 +210,20 @@ export class LotsService {
               'La fecha de inicio es anterior al inicio del ciclo actual',
             );
           }
+          // The closing cycle ends on `start`: none of its logs can be later.
+          const later = await tx.actionLog.findFirst({
+            where: {
+              cycleId: last.id,
+              voidedAt: null,
+              date: { gt: toDbDate(start) },
+            },
+            select: { id: true },
+          });
+          if (later) {
+            throw new BadRequestException(
+              `El ciclo ${last.number} tiene registros después de esa fecha`,
+            );
+          }
           await tx.cycle.update({
             where: { id: last.id },
             data: { status: 'CLOSED', endDate: toDbDate(start) },
