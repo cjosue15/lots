@@ -1,0 +1,36 @@
+#!/bin/sh
+# Blocks a push that changes the web app (web/) without raising its version in
+# web/package.json. Docs (*.md) and agent files don't count. Every deploy shows
+# its version in the footer and in /version.json, so each one needs a new number.
+# Skip once, knowingly: git push --no-verify
+
+zero=0000000000000000000000000000000000000000
+
+version_at() { # <commit> -> version in web/package.json at that commit
+  git show "$1:web/package.json" 2>/dev/null | sed -n 's/^  "version": "\(.*\)",$/\1/p'
+}
+
+status=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue # deleting a branch
+
+  if [ "$remote_sha" = "$zero" ]; then # new branch: compare with where it left main
+    remote_sha=$(git merge-base "$local_sha" origin/main 2>/dev/null) || continue
+  fi
+
+  changed=$(git diff --name-only "$remote_sha" "$local_sha" -- web \
+    ':(exclude)web/**/*.md' ':(exclude)web/*.md' ':(exclude)web/.claude' ':(exclude)web/.agents')
+  [ -z "$changed" ] && continue
+
+  old=$(version_at "$remote_sha")
+  new=$(version_at "$local_sha")
+  if [ "$old" = "$new" ]; then
+    echo "✗ $remote_ref: web/ cambió pero web/package.json sigue en la versión $new."
+    echo "  Sube \"version\" (patch para arreglos, minor para funciones nuevas) y vuelve a hacer push."
+    status=1
+  elif [ "$(printf '%s\n%s\n' "$old" "$new" | sort -V | tail -n1)" != "$new" ]; then
+    echo "✗ $remote_ref: la versión baja de $old a $new; debe subir."
+    status=1
+  fi
+done
+exit $status
