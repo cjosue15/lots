@@ -334,6 +334,15 @@ Resultado: **una consulta a Supabase por usuario y por token**, es decir, aproxi
 - **Las migraciones, el seed y las instalaciones de paquetes los ejecuta el usuario, manualmente.**
 - El frontend sigue los mismos patrones que `distribution`: componentes standalone, `inject()`, `@if`/`@for`, guards e interceptores funcionales, rutas con carga diferida y módulos con `features/`, `components/`, `services/` y `models/`.
 
+### 11.3 Instalable (PWA)
+
+- Se instala en el celular como **"Invernadero Oro Verde"** (bajo el ícono: "Oro Verde"), con el logo sobre fondo blanco. Usa `@angular/service-worker`.
+- El service worker guarda **solo los archivos de la app** (JS, CSS, fuentes e íconos) para que abra rápido. **Nunca guarda `/api`**, así nadie ve stock o registros viejos.
+- **Aviso de versión nueva** (`AppUpdateService`): el service worker baja cada deploy en segundo plano y la app muestra "Hay una versión nueva" con **Actualizar**, que recarga la página. Nunca recarga sola, para no perder un formulario a medio llenar. Revisa al abrir, al volver a primer plano y cada hora (empezando cuando la app está estable, para no retrasar el registro del service worker). Si la versión guardada se rompe, avisa "La app necesita recargarse".
+- No se usa `activateUpdate()`: cambiar de versión sin recargar puede romper las rutas que se cargan aparte.
+- **Despliegue:** el front debe servirse por HTTPS, devolver `index.html` en todas las rutas y no guardar en caché `index.html`, `ngsw.json` ni `ngsw-worker.js`.
+- El service worker solo funciona en el build de producción, no con `ng serve`.
+
 ## 12. Orden de construcción
 
 1. **Base:** esquema de Prisma, migraciones y datos iniciales (invernaderos, lotes, fases y acciones con su tipo de detalle).
