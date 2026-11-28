@@ -1,0 +1,20 @@
+# Installed and built inside the image (Linux), never copied from the Mac.
+node_modules
+dist
+.angular
+.nx
+coverage
+
+.env
+.env.*
+
+# Not needed to build.
+.claude
+.agents
+.vscode
+.mcp.json
+*.md
+.DS_Store
+*.log
+Dockerfile
+.dockerignore
