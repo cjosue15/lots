@@ -2,13 +2,16 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import {
   ApplicationConfig,
   inject,
+  isDevMode,
   provideAppInitializer,
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { provideServiceWorker } from '@angular/service-worker';
 import { provideSpartanHlm } from '@spartan-ng/helm/utils';
 import { routes } from './app.routes';
 import { AuthService } from './modules/auth/services/auth.service';
+import { AppUpdateService } from './shared/app-update.service';
 import { authInterceptor } from './shared/interceptors/auth.interceptor';
 
 export const appConfig: ApplicationConfig = {
@@ -20,5 +23,11 @@ export const appConfig: ApplicationConfig = {
     // so a signed-in user never sees the login screen flash.
     provideAppInitializer(() => inject(AuthService).initialize()),
     provideSpartanHlm(),
+    // Installable app (PWA). Caches the app's files, never the API.
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      registrationStrategy: 'registerWhenStable:30000',
+    }),
+    provideAppInitializer(() => inject(AppUpdateService).start()),
   ],
 };
