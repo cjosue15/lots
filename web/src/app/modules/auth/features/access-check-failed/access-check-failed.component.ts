@@ -1,7 +1,6 @@
+import { NgOptimizedImage } from '@angular/common';
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideLeaf } from '@ng-icons/lucide';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
@@ -13,14 +12,13 @@ import { AuthService } from '../../services/auth.service';
  */
 @Component({
   selector: 'app-access-check-failed',
-  imports: [NgIcon, HlmButtonImports, HlmCardImports, HlmSpinnerImports],
-  providers: [provideIcons({ lucideLeaf })],
+  imports: [NgOptimizedImage, HlmButtonImports, HlmCardImports, HlmSpinnerImports],
   template: `
     <main class="flex min-h-dvh items-center justify-center px-4 py-10">
       <section hlmCard class="w-full max-w-[400px] shadow-sm">
         <div hlmCardHeader>
           <p class="mb-3 flex items-center gap-2 font-semibold">
-            <ng-icon name="lucideLeaf" size="18" aria-hidden="true" />
+            <img ngSrc="logo.png" width="472" height="285" alt="" priority class="h-10 w-auto" />
             Oro Verde
           </p>
           <h1 hlmCardTitle>No se pudo verificar tu acceso</h1>

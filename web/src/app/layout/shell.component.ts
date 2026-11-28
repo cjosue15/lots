@@ -1,14 +1,15 @@
+import { NgOptimizedImage } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideLeaf, lucideLogOut, lucidePackage, lucideSettings } from '@ng-icons/lucide';
+import { lucideLogOut, lucidePackage, lucideSettings } from '@ng-icons/lucide';
 import { ROLE_LABELS } from '../modules/auth/models/me.model';
 import { AuthService } from '../modules/auth/services/auth.service';
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, NgIcon],
-  providers: [provideIcons({ lucideLeaf, lucideLogOut, lucidePackage, lucideSettings })],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, NgIcon, NgOptimizedImage],
+  providers: [provideIcons({ lucideLogOut, lucidePackage, lucideSettings })],
   template: `
     <header class="bg-primary text-primary-foreground">
       <div class="mx-auto flex h-14 max-w-5xl items-center gap-3 px-4">
@@ -16,7 +17,7 @@ import { AuthService } from '../modules/auth/services/auth.service';
           routerLink="/"
           class="flex shrink-0 items-center gap-2 rounded-sm font-semibold whitespace-nowrap focus-visible:ring-3 focus-visible:ring-white/60 focus-visible:outline-none"
         >
-          <ng-icon name="lucideLeaf" size="18" aria-hidden="true" />
+          <img ngSrc="logo-white.png" width="472" height="285" alt="" priority class="h-8 w-auto" />
           Oro Verde
         </a>
 

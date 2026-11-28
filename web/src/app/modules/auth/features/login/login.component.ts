@@ -1,8 +1,9 @@
+import { NgOptimizedImage } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideEye, lucideEyeOff, lucideLeaf } from '@ng-icons/lucide';
+import { lucideEye, lucideEyeOff } from '@ng-icons/lucide';
 import { toast } from '@spartan-ng/brain/sonner';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmCardImports } from '@spartan-ng/helm/card';
@@ -15,6 +16,7 @@ import { AuthService } from '../../services/auth.service';
   selector: 'app-login',
   imports: [
     ReactiveFormsModule,
+    NgOptimizedImage,
     NgIcon,
     HlmButtonImports,
     HlmFieldImports,
@@ -22,7 +24,7 @@ import { AuthService } from '../../services/auth.service';
     HlmSpinnerImports,
     HlmCardImports,
   ],
-  providers: [provideIcons({ lucideEye, lucideEyeOff, lucideLeaf })],
+  providers: [provideIcons({ lucideEye, lucideEyeOff })],
   templateUrl: './login.component.html',
 })
 export class LoginComponent {
