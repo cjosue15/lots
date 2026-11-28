@@ -30,6 +30,31 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* iPhone (viewport-fit=cover + status bar black-translucent): the page draws
+   under the notch/status bar and the home indicator, so the body keeps its
+   content inside the safe area. env() is 0 on Android and desktop. */
+body {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+}
+
+/* Solid strip behind the status bar so its white text stays readable and
+   scrolled content does not show through it. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: env(safe-area-inset-top);
+  background-color: var(--primary);
+  z-index: 40;
+  pointer-events: none;
+}
+
+/* Full-height screens (login) minus the safe areas the body already pads. */
+@utility min-h-safe-screen {
+  min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+}
+
 :root {
   color-scheme: light;
 

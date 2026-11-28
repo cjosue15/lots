@@ -14,7 +14,7 @@ import { AuthService } from '../../services/auth.service';
   selector: 'app-access-check-failed',
   imports: [NgOptimizedImage, HlmButtonImports, HlmCardImports, HlmSpinnerImports],
   template: `
-    <main class="flex min-h-dvh items-center justify-center px-4 py-10">
+    <main class="flex min-h-safe-screen items-center justify-center px-4 py-10">
       <section hlmCard class="w-full max-w-[400px] shadow-sm">
         <div hlmCardHeader>
           <p class="mb-3 flex items-center gap-2 font-semibold">
