@@ -10,6 +10,7 @@ import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmInputImports } from '@spartan-ng/helm/input';
 import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
+import { AppFooterComponent } from '../../../../shared/ui/app-footer.component';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -23,9 +24,12 @@ import { AuthService } from '../../services/auth.service';
     HlmInputImports,
     HlmSpinnerImports,
     HlmCardImports,
+    AppFooterComponent,
   ],
   providers: [provideIcons({ lucideEye, lucideEyeOff })],
   templateUrl: './login.component.html',
+  // Column filling the screen: the card centered, the footer at the bottom.
+  host: { class: 'flex min-h-safe-screen flex-col' },
 })
 export class LoginComponent {
   private readonly fb = inject(FormBuilder);

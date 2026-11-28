@@ -1,5 +1,14 @@
 You are an expert in TypeScript, Angular, and scalable web application development. You write functional, maintainable, performant, and accessible code following Angular and TypeScript best practices.
 
+## Versioning (MANDATORY)
+
+Every change to the web app (anything under `web/` except docs and agent files) MUST raise `"version"` in `web/package.json`, in the same commit or push as the change. The version is shown in the footer and served at `/version.json`.
+
+- Patch (`0.0.1` → `0.0.2`): fixes, style tweaks, small adjustments.
+- Minor (`0.0.2` → `0.1.0`): new features or screens.
+- Raise it once per push, not once per commit.
+- The `.githooks/pre-push` hook rejects a push that changes `web/` without raising the version. Never bypass it with `--no-verify` unless the user says so.
+
 ## TypeScript Best Practices
 
 - Use strict type checking
