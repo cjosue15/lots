@@ -5,11 +5,14 @@ import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideLogOut, lucidePackage, lucideSettings } from '@ng-icons/lucide';
 import { ROLE_LABELS } from '../modules/auth/models/me.model';
 import { AuthService } from '../modules/auth/services/auth.service';
+import { AppFooterComponent } from '../shared/ui/app-footer.component';
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, NgIcon, NgOptimizedImage],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, NgIcon, NgOptimizedImage, AppFooterComponent],
   providers: [provideIcons({ lucideLogOut, lucidePackage, lucideSettings })],
+  // Column filling the screen so the footer stays at the bottom on short pages.
+  host: { class: 'flex min-h-safe-screen flex-col' },
   template: `
     <header class="bg-primary text-primary-foreground">
       <div class="mx-auto flex h-14 max-w-5xl items-center gap-3 px-4">
@@ -63,9 +66,11 @@ import { AuthService } from '../modules/auth/services/auth.service';
       </div>
     </header>
 
-    <main class="mx-auto max-w-5xl px-4 py-6">
+    <main class="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
       <router-outlet />
     </main>
+
+    <app-footer class="mx-auto w-full max-w-5xl" />
   `,
 })
 export class ShellComponent {
